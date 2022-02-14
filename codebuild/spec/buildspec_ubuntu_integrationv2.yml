@@ -57,6 +57,7 @@ phases:
       - $CB_BIN_DIR/s2n_setup_env.sh
       - printenv
       - make
+      - codebuild-breakpoint
       # Install the parent s2n commit in a temporary directory
       - $CB_BIN_DIR/install_s2n_head.sh "$(mktemp -d)"
   build:
