@@ -63,4 +63,19 @@ phases:
     commands:
       # For jdk integration test
       - javac tests/integrationv2/bin/SSLSocketClient.java
-      - TOX_TEST_NAME=$INTEGV2_TEST.py make integrationv2
+      - echo "time test_client_authentication" && time TOX_TEST_NAME=test_client_authentication.py make integrationv2
+      - echo "time test_cross_compatibility" && time TOX_TEST_NAME=test_cross_compatibility.py make integrationv2
+      - echo "time test_dynamic_record_sizes" && time TOX_TEST_NAME=test_dynamic_record_sizes.py make integrationv2
+      - echo "time test_early_data" && time TOX_TEST_NAME=test_early_data.py make integrationv2
+      - echo "time test_external_psk" && time TOX_TEST_NAME=test_external_psk.py make integrationv2
+      - echo "time test_fragmentation" && time TOX_TEST_NAME=test_fragmentation.py make integrationv2
+      - echo "time test_happy_path" && time TOX_TEST_NAME=test_happy_path.py make integrationv2
+      - echo "time test_hello_retry_requests" && time TOX_TEST_NAME=test_hello_retry_requests.py make integrationv2
+      - echo "time test_key_update" && time TOX_TEST_NAME=test_key_update.py make integrationv2
+      - echo "time test_pq_handshake" && time TOX_TEST_NAME=test_pq_handshake.py make integrationv2
+      - echo "time test_session_resumption" && time TOX_TEST_NAME=test_session_resumption.py make integrationv2
+      - echo "time test_signature_algorithms" && time TOX_TEST_NAME=test_signature_algorithms.py make integrationv2
+      - echo "time test_sni_match" && time TOX_TEST_NAME=test_sni_match.py make integrationv2
+      - echo "time test_sslyze" && time TOX_TEST_NAME=test_sslyze.py make integrationv2
+      - echo "time test_version_negotiation" && time TOX_TEST_NAME=test_version_negotiation.py make integrationv2
+      - echo "time test_well_known_endpoints" && time TOX_TEST_NAME=test_well_known_endpoints.py make integrationv2
