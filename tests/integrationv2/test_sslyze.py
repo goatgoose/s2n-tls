@@ -231,7 +231,7 @@ def invalid_sslyze_scan_parameters(*args, **kwargs):
     return invalid_test_parameters(*args, **kwargs)
 
 
-@pytest.mark.uncollect_if(func=invalid_sslyze_scan_parameters)
+@pytest.mark.uncollect_if(func=invalid_test_parameters)
 @pytest.mark.parametrize("protocol", PROTOCOLS_TO_TEST, ids=get_parameter_name)
 @pytest.mark.parametrize("scan_command", SSLYZE_SCANS_TO_TEST, ids=get_parameter_name)
 @pytest.mark.parametrize("provider", [S2N], ids=get_parameter_name)
@@ -316,7 +316,7 @@ def invalid_certificate_scans_parameters(*args, **kwargs):
     return invalid_test_parameters(*args, **kwargs)
 
 
-@pytest.mark.uncollect_if(func=invalid_certificate_scans_parameters)
+@pytest.mark.uncollect_if(func=invalid_test_parameters)
 @pytest.mark.parametrize("protocol", PROTOCOLS_TO_TEST, ids=get_parameter_name)
 @pytest.mark.parametrize("certificate", CERTS_TO_TEST, ids=get_parameter_name)
 @pytest.mark.parametrize("provider", [S2N], ids=get_parameter_name)
