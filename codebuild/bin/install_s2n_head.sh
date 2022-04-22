@@ -34,8 +34,8 @@ cmake ./s2n_head -Bbuild -DCMAKE_PREFIX_PATH="$LIBCRYPTO_ROOT" -DCMAKE_BUILD_TYP
 cmake --build ./build -- -j $JOBS
 
 # Copy new executables to bin directory
-cp -f bin/s2nc "$BASE_S2N_DIR"/bin/s2nc_head
-cp -f bin/s2nd "$BASE_S2N_DIR"/bin/s2nd_head
+cp -f "$BUILD_DIR"/build/bin/s2nc "$BASE_S2N_DIR"/bin/s2nc_head
+cp -f "$BUILD_DIR"/build/bin/s2nd "$BASE_S2N_DIR"/bin/s2nd_head
 
 popd
 
