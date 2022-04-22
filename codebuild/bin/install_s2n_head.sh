@@ -30,8 +30,8 @@ cd "$BUILD_DIR"
 
 # Clone the most recent s2n commit
 git clone --depth=1 https://github.com/aws/s2n-tls s2n_head
-cd s2n_head
-make -j $JOBS
+cmake ./s2n_head -Bbuild -DCMAKE_PREFIX_PATH="$LIBCRYPTO_ROOT" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=on -DBUILD_TESTING=off
+cmake --build ./build -- -j $JOBS
 
 # Copy new executables to bin directory
 cp -f bin/s2nc "$BASE_S2N_DIR"/bin/s2nc_head
