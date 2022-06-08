@@ -91,6 +91,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -118,6 +120,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(server_conn));
@@ -145,6 +149,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(client_conn, "test_all"));
@@ -169,6 +175,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -216,6 +224,8 @@ int main(int argc, char **argv)
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
             EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -258,6 +268,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk_without_early_data));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -293,6 +305,8 @@ int main(int argc, char **argv)
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
             EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -330,6 +344,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk_to_reject));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -369,6 +385,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk_to_reject));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -408,6 +426,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -461,6 +481,8 @@ int main(int argc, char **argv)
                 EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
                 EXPECT_SUCCESS(s2n_connections_set_io_pair(client_conn, server_conn, &io_pair));
 
+                EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+                EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
                 EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
                 EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
                 EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -501,6 +523,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_set_config(client_conn, config_with_cert));
             EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config_with_cert));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -533,6 +557,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -596,6 +622,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -635,6 +663,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -702,6 +732,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
@@ -734,6 +766,8 @@ int main(int argc, char **argv)
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
 
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_set_early_data_expected(client_conn));
