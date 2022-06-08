@@ -463,9 +463,9 @@ int main()
                 EXPECT_TRUE(S2N_CBIT_TEST(server_conn->extension_requests_received, key_shares_id));
 
                 /* All expected SERVER_HELLO extensions sent and received */
+                EXPECT_NULL(client_conn->kex_params.server_ecc_evp_params.negotiated_curve);
                 EXPECT_OK(s2n_negotiate_test_server_and_client_until_message(server_conn, client_conn, ENCRYPTED_EXTENSIONS));
-                EXPECT_TRUE(S2N_CBIT_TEST(client_conn->extension_requests_received, key_shares_id));
-                EXPECT_TRUE(S2N_CBIT_TEST(server_conn->extension_requests_sent, key_shares_id));
+                EXPECT_NOT_NULL(client_conn->kex_params.server_ecc_evp_params.negotiated_curve);
 
                 EXPECT_SUCCESS(s2n_connection_free(client_conn));
                 EXPECT_SUCCESS(s2n_connection_free(server_conn));
