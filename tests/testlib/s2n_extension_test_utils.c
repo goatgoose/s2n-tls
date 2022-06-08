@@ -15,6 +15,8 @@
 
 #include "tls/s2n_connection.h"
 #include "testlib/s2n_testlib.h"
+#include "tls/extensions/s2n_server_key_share.h"
+#include "utils/s2n_bitmap.h"
 
 const s2n_parsed_extension EMPTY_PARSED_EXTENSIONS[S2N_PARSED_EXTENSIONS_COUNT] = { 0 };
 
@@ -22,5 +24,14 @@ int s2n_connection_allow_all_response_extensions(struct s2n_connection *conn)
 {
     POSIX_CHECKED_MEMSET(&conn->extension_requests_received, 0xFF, S2N_SUPPORTED_EXTENSIONS_BITFIELD_LEN);
     POSIX_CHECKED_MEMSET(&conn->extension_requests_sent, 0xFF, S2N_SUPPORTED_EXTENSIONS_BITFIELD_LEN);
+    return S2N_SUCCESS;
+}
+
+int s2n_connection_allow_key_share_extension(struct s2n_connection *conn)
+{
+    s2n_extension_type_id extension_id;
+    s2n_extension_supported_iana_value_to_id(s2n_server_key_share_extension.iana_value, &extension_id);
+    S2N_CBIT_SET(conn->extension_requests_sent, extension_id);
+    S2N_CBIT_SET(conn->extension_requests_received, extension_id);
     return S2N_SUCCESS;
 }
