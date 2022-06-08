@@ -131,6 +131,7 @@ int main(int argc, char **argv)
         {
             struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT);
             EXPECT_NOT_NULL(client_conn);
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(client_conn, "default_tls13"));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
 
@@ -159,6 +160,7 @@ int main(int argc, char **argv)
         {
             struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT);
             EXPECT_NOT_NULL(client_conn);
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(client_conn, "default_tls13"));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
 
@@ -203,6 +205,7 @@ int main(int argc, char **argv)
         {
             struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER);
             EXPECT_NOT_NULL(server_conn);
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
@@ -231,6 +234,8 @@ int main(int argc, char **argv)
         {
             struct s2n_connection *client_conn = NULL, *server_conn = NULL;
             EXPECT_OK(s2n_test_client_and_server_new(&client_conn, &server_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -263,7 +268,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -298,7 +302,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -335,7 +338,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -389,7 +391,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -431,7 +432,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -476,7 +476,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk_with_wrong_early_data));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk));
 
@@ -514,7 +513,6 @@ int main(int argc, char **argv)
 
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(client_conn));
             EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
-
             EXPECT_SUCCESS(s2n_connection_append_psk(client_conn, test_psk));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, test_psk_with_wrong_early_data));
 
@@ -833,6 +831,7 @@ int main(int argc, char **argv)
             EXPECT_NOT_NULL(server_conn);
             EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, known_psk));
             EXPECT_SUCCESS(s2n_connection_set_server_max_early_data_size(server_conn, max_early_data));
             /* We need to explicitly set the psk_params type to skip our stateless session resumption recv 
@@ -877,6 +876,7 @@ int main(int argc, char **argv)
             EXPECT_NOT_NULL(server_conn);
             EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, known_psk));
             EXPECT_SUCCESS(s2n_connection_set_server_max_early_data_size(server_conn, max_early_data));
             /* We need to explicitly set the psk_params type to skip our stateless session resumption recv 
@@ -959,6 +959,7 @@ int main(int argc, char **argv)
             EXPECT_NOT_NULL(server_conn);
             EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, known_psk_without_early_data));
             EXPECT_SUCCESS(s2n_connection_set_server_max_early_data_size(server_conn, max_early_data));
             /* We need to explicitly set the psk_params type to skip our stateless session resumption recv 
@@ -1004,6 +1005,7 @@ int main(int argc, char **argv)
             EXPECT_NOT_NULL(server_conn);
             EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(server_conn, "default_tls13"));
+            EXPECT_SUCCESS(s2n_connection_allow_key_share_extension(server_conn));
             EXPECT_SUCCESS(s2n_connection_append_psk(server_conn, known_psk_with_wrong_cipher_suite));
             EXPECT_SUCCESS(s2n_connection_set_server_max_early_data_size(server_conn, max_early_data));
             /* We need to explicitly set the psk_params type to skip our stateless session resumption recv 
