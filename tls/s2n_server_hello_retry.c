@@ -97,8 +97,13 @@ int s2n_server_hello_retry_recv(struct s2n_connection *conn)
             }
         }
     }
-    POSIX_ENSURE(selected_group_in_supported_groups, S2N_ERR_INVALID_HELLO_RETRY);
 
+    /**
+     *= https://tools.ietf.org/rfc/rfc8446#4.2.8
+     *# and (2) the selected_group field does not
+     *# correspond to a group which was provided in the "key_share" extension
+     *# in the original ClientHello.
+     **/
     bool new_key_share_requested = false;
     if (named_curve != NULL) {
         new_key_share_requested = (named_curve != conn->kex_params.client_ecc_evp_params.negotiated_curve);
@@ -110,14 +115,22 @@ int s2n_server_hello_retry_recv(struct s2n_connection *conn)
         new_key_share_requested = (kem_group != conn->kex_params.client_kem_group_params.kem_group);
     }
 
-    /*
+    /**
      *= https://tools.ietf.org/rfc/rfc8446#section-4.1.4
      *# Clients MUST abort the handshake with an
      *# "illegal_parameter" alert if the HelloRetryRequest would not result
      *# in any change in the ClientHello.
-     */
+     *
+     *= https://tools.ietf.org/rfc/rfc8446#4.2.8
+     *= type=exception
+     *= reason=Permit HRRs to leave the selected_group field unmodified if sent due to rejecting early data
+     *# If either of these checks fails, then
+     *# the client MUST abort the handshake with an "illegal_parameter"
+     *# alert.
+     **/
     POSIX_ENSURE((conn->early_data_state == S2N_EARLY_DATA_REJECTED) || new_key_share_requested,
             S2N_ERR_INVALID_HELLO_RETRY);
+    POSIX_ENSURE(selected_group_in_supported_groups, S2N_ERR_INVALID_HELLO_RETRY);
 
     /* Update transcript hash */
     POSIX_GUARD(s2n_server_hello_retry_recreate_transcript(conn));
