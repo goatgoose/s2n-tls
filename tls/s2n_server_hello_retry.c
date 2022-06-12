@@ -68,19 +68,36 @@ int s2n_server_hello_retry_recv(struct s2n_connection *conn)
     POSIX_GUARD(s2n_connection_get_kem_preferences(conn, &kem_pref));
     POSIX_ENSURE_REF(kem_pref);
 
-    /* Upon receipt of the HelloRetryRequest, the client MUST verify that:
-     * (1) the selected_group field corresponds to a group
-     * which was provided in the "supported_groups" extension in the
-     * original ClientHello and
-     * (2) the selected_group field does not correspond to a group which was provided
-     * in the "key_share" extension in the original ClientHello.
-     * If either of these checks fails, then the client MUST abort the handshake. */
-
     const struct s2n_ecc_named_curve *named_curve = conn->kex_params.server_ecc_evp_params.negotiated_curve;
     const struct s2n_kem_group *kem_group = conn->kex_params.server_kem_group_params.kem_group;
 
     /* Boolean XOR check: exactly one of {named_curve, kem_group} should be non-null. */
     POSIX_ENSURE( (named_curve != NULL) != (kem_group != NULL), S2N_ERR_INVALID_HELLO_RETRY);
+
+    /**
+     *= https://tools.ietf.org/rfc/rfc8446#4.2.8
+     *# Upon receipt of this extension in a HelloRetryRequest, the client
+     *# MUST verify that (1) the selected_group field corresponds to a group
+     *# which was provided in the "supported_groups" extension in the
+     *# original ClientHello
+     **/
+    bool selected_group_in_supported_groups = false;
+    if (named_curve != NULL) {
+        for (size_t i = 0; i < ecc_pref->count; i++) {
+            if (named_curve->iana_id == ecc_pref->ecc_curves[i]->iana_id) {
+                selected_group_in_supported_groups = true;
+            }
+        }
+    }
+    if (kem_group != NULL) {
+        for (size_t i = 0; i < kem_pref->tls13_kem_group_count; i++) {
+            if (kem_group->iana_id == kem_pref->tls13_kem_groups[i]->iana_id) {
+                selected_group_in_supported_groups = true;
+                break;
+            }
+        }
+    }
+    POSIX_ENSURE(selected_group_in_supported_groups, S2N_ERR_INVALID_HELLO_RETRY);
 
     bool new_key_share_requested = false;
     if (named_curve != NULL) {
