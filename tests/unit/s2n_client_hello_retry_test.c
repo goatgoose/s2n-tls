@@ -453,10 +453,18 @@ int main(int argc, char **argv)
         EXPECT_SUCCESS(s2n_io_pair_close(&io_pair));
     }
 
-    /* Self-Talk test: the client initiates a handshake with an X25519 share.
+    /**
+     * Self-Talk test: the client initiates a handshake with an X25519 share.
      * The server, however does not support x25519 and prefers P-256.
      * The server then sends a HelloRetryRequest that requires the
-     * client to generate a key share on the P-256 curve. */
+     * client to generate a key share on the P-256 curve.
+     *
+     *= https://tools.ietf.org/rfc/rfc8446#4.1.1
+     *= type=test
+     *# If the server selects an (EC)DHE group and the client did not offer a
+     *# compatible "key_share" extension in the initial ClientHello, the
+     *# server MUST respond with a HelloRetryRequest (Section 4.1.4) message.
+     **/
     if (s2n_is_evp_apis_supported()) {
         struct s2n_config *server_config;
         struct s2n_config *client_config;
