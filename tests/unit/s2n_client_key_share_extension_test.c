@@ -172,6 +172,12 @@ int main(int argc, char **argv)
          *# replace the original "key_share" extension with one containing only a
          *# new KeyShareEntry for the group indicated in the selected_group field
          *# of the triggering HelloRetryRequest.
+         *
+         *= https://tools.ietf.org/rfc/rfc8446#4.1.2
+         *= type=test
+         *# If a "key_share" extension was supplied in the HelloRetryRequest,
+         *# replacing the list of shares with a list containing a single
+         *# KeyShareEntry from the indicated group.
          **/
         if (s2n_is_evp_apis_supported()) {
             struct s2n_connection *conn;
