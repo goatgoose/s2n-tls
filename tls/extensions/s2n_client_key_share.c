@@ -79,18 +79,6 @@ static int s2n_generate_default_ecc_key_share(struct s2n_connection *conn, struc
             return S2N_SUCCESS;
         }
 
-        /**
-         *= https://tools.ietf.org/rfc/rfc8446#4.2.8
-         *# If using (EC)DHE key establishment and a HelloRetryRequest containing a
-         *# "key_share" extension was received by the client, the client MUST
-         *# verify that the selected NamedGroup in the ServerHello is the same as
-         *# that in the HelloRetryRequest. If this check fails, the client MUST
-         *# abort the handshake with an "illegal_parameter" alert.
-         **/
-        if (!s2n_is_hello_retry_message(conn)) {
-            POSIX_ENSURE(server_curve == client_params->negotiated_curve, S2N_ERR_BAD_KEY_SHARE);
-        }
-
         /* If the server requested a new ECC keyshare, free the old one */
         if (server_curve != client_params->negotiated_curve) {
             POSIX_GUARD(s2n_ecc_evp_params_free(client_params));
