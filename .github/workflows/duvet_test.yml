@@ -12,3 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: goatgoose/duvet-action@v0.0.2
+        with:
+          rfcs: |
+            https://tools.ietf.org/rfc/rfc5869
+            https://tools.ietf.org/rfc/rfc8446
+            https://tools.ietf.org/rfc/rfc8448
+            https://tools.ietf.org/rfc/rfc7627
