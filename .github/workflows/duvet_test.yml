@@ -1,0 +1,17 @@
+---
+name: Test Job
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  hello_world_job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: goatgoose/duvet-action@v0
+        with:
+          who-to-greet: 'test!'
+
