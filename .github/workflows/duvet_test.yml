@@ -18,3 +18,4 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-s3-bucket-name: duvet-report-test-bucket
           aws-s3-region: us-east-1
+          cdn: https://d2fibjeers6rj2.cloudfront.net
