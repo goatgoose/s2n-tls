@@ -58,6 +58,7 @@ phases:
   build:
     commands:
       - printenv
+      - codebuild-breakpoint
       - $CB_BIN_DIR/s2n_codebuild.sh
   post_build:
     commands:
