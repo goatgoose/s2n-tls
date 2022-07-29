@@ -38,15 +38,11 @@ if [ "$IS_FIPS" == "1" ]; then
   cd aws-lc
   git checkout -b fips-2021-10-20 origin/fips-2021-10-20
   cd ..
-else
-  cd aws-lc
-  git checkout a219726caf0c4585b80193570369627ed9a3a931
-  cd ..
 fi
 
 install_awslc() {
 	echo "Building with shared library=$1"
-	cmake ./aws-lc -Bbuild -GNinja -DBUILD_SHARED_LIBS=$1 -DCMAKE_BUILD_TYPE=relwithdebinfo -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" -DFIPS="${IS_FIPS}"
+	cmake ./aws-lc -Bbuild -GNinja -DBUILD_SHARED_LIBS=$1 -DCMAKE_BUILD_TYPE=relwithdebinfo -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" -DFIPS="${IS_FIPS}" -DCMAKE_CXX_FLAGS="-std=c++11"
 	ninja -j "${JOBS}" -C build install
 	ninja -C build clean
 }
