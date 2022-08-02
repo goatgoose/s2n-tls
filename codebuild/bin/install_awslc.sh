@@ -33,8 +33,10 @@ source codebuild/bin/jobs.sh
 mkdir -p "$BUILD_DIR"||true
 cd "$BUILD_DIR"
 
-git clone https://github.com/nebeid/aws-lc
+git clone https://github.com/nebeid/aws-lc.git
+cd aws-lc
 git checkout string-literal-fix-gcc4.8.5-4ubuntu8
+cd ..
 
 install_awslc() {
 	echo "Building with shared library=$1"
