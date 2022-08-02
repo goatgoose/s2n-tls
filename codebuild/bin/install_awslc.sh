@@ -32,17 +32,9 @@ source codebuild/bin/jobs.sh
 
 mkdir -p "$BUILD_DIR"||true
 cd "$BUILD_DIR"
-git clone https://github.com/awslabs/aws-lc.git
-if [ "$IS_FIPS" == "1" ]; then
-  echo "Checking out FIPS branch"
-  cd aws-lc
-  git checkout -b fips-2021-10-20 origin/fips-2021-10-20
-  cd ..
-else
-  cd aws-lc
-  git checkout a219726caf0c4585b80193570369627ed9a3a931
-  cd ..
-fi
+
+git clone https://github.com/nebeid/aws-lc
+git checkout string-literal-fix-gcc4.8.5-4ubuntu8
 
 install_awslc() {
 	echo "Building with shared library=$1"

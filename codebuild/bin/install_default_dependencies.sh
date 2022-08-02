@@ -60,7 +60,7 @@ fi
 
 # Download and Install AWS-LC
 if [[ "$S2N_LIBCRYPTO" == "awslc" && ! -d "$AWSLC_INSTALL_DIR" ]]; then
-    codebuild/bin/install_awslc.sh "$(mktemp -d)" "$AWSLC_INSTALL_DIR" "0" > /dev/null ;
+    codebuild/bin/install_awslc.sh "$(mktemp -d)" "$AWSLC_INSTALL_DIR" "0";
 fi
 if [[ "$S2N_LIBCRYPTO" == "awslc-fips" && ! -d "$AWSLC_FIPS_INSTALL_DIR" ]]; then
     codebuild/bin/install_awslc.sh "$(mktemp -d)" "$AWSLC_FIPS_INSTALL_DIR" "1" > /dev/null ;
