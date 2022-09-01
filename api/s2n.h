@@ -43,6 +43,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/uio.h>
+#include <openssl/x509.h>
 
 /**
  *  Function return code
@@ -928,6 +929,34 @@ typedef uint8_t (*s2n_verify_host_fn) (const char *host_name, size_t host_name_l
  */
 S2N_API
 extern int s2n_config_set_verify_host_callback(struct s2n_config *config, s2n_verify_host_fn, void *data);
+
+struct s2n_x509_cert;
+
+int s2n_x509_cert_init(struct s2n_x509_cert *cert, X509 *ossl_cert);
+
+int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert);
+
+struct s2n_x509_crl;
+
+int s2n_x509_crl_init(struct s2n_x509_crl *crl, X509_CRL *ossl_crl);
+
+int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl);
+
+struct s2n_crl_fn_context;
+
+typedef uint8_t (*s2n_crl_for_cert_fn) (struct s2n_crl_fn_context *s2n_context, void *data);
+
+S2N_API
+int s2n_config_set_crl_for_cert_callback(struct s2n_config *config, s2n_crl_for_cert_fn, void *data);
+
+S2N_API
+int s2n_crl_for_cert_provide_crl(struct s2n_crl_fn_context, struct s2n_x509_crl crl);
+
+S2N_API
+int s2n_crl_for_cert_accept(struct s2n_crl_fn_context);
+
+S2N_API
+int s2n_crl_for_cert_reject(struct s2n_crl_fn_context);
 
 /**
  * Toggles whether or not to validate stapled OCSP responses.

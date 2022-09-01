@@ -344,6 +344,9 @@ struct s2n_connection {
     void *data_for_verify_host;
     uint8_t verify_host_fn_overridden;
 
+    s2n_crl_for_cert_fn crl_for_cert;
+    void *data_for_crl_for_cert;
+
     /* Session ticket data */
     s2n_session_ticket_status session_ticket_status;
     struct s2n_blob client_ticket;

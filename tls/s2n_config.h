@@ -116,6 +116,9 @@ struct s2n_config {
     uint8_t (*verify_host)(const char *host_name, size_t host_name_len, void *data);
     void *data_for_verify_host;
 
+    s2n_crl_for_cert_fn crl_for_cert;
+    void *data_for_crl_for_cert;
+
     /* Application supplied callback to resolve domain name conflicts when loading certs. */
     s2n_cert_tiebreak_callback cert_tiebreak_cb;
 

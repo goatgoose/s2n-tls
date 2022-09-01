@@ -634,3 +634,27 @@ bool s2n_x509_validator_is_cert_chain_validated(const struct s2n_x509_validator 
 {
     return validator && (validator->state == VALIDATED || validator->state == OCSP_VALIDATED);
 }
+
+int s2n_x509_cert_init(struct s2n_x509_cert *cert, X509 *ossl_cert) {
+    POSIX_ENSURE_REF(ossl_cert);
+    cert->cert = ossl_cert;
+    return S2N_SUCCESS;
+}
+
+int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert) {
+    POSIX_ENSURE_REF(cert->cert);
+    *ossl_cert = cert->cert;
+    return S2N_SUCCESS;
+}
+
+int s2n_x509_crl_init(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
+    POSIX_ENSURE_REF(ossl_crl);
+    crl->crl = ossl_crl;
+    return S2N_SUCCESS;
+}
+
+int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl) {
+    POSIX_ENSURE_REF(crl->crl);
+    *ossl_crl = crl->crl;
+    return S2N_SUCCESS;
+}

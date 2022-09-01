@@ -63,6 +63,19 @@ struct s2n_x509_validator {
     int state;
 };
 
+struct s2n_x509_cert {
+    X509 *cert;
+};
+
+struct s2n_x509_crl {
+    X509_CRL *crl;
+};
+
+struct s2n_crl_fn_context {
+    struct s2n_x509_cert *cert;
+    struct s2n_x509_validator *validator;
+};
+
 /** Some libcrypto implementations do not support OCSP validation. Returns 1 if supported, 0 otherwise. */
 uint8_t s2n_x509_ocsp_stapling_supported(void);
 

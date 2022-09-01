@@ -321,6 +321,11 @@ int s2n_connection_set_config(struct s2n_connection *conn, struct s2n_config *co
             }
         }
 
+        if (config->crl_for_cert != NULL) {
+            conn->crl_for_cert = config->crl_for_cert;
+            conn->data_for_crl_for_cert = config->data_for_crl_for_cert;
+        }
+
         if (config->max_verify_cert_chain_depth_set) {
             POSIX_GUARD(s2n_x509_validator_set_max_chain_depth(&conn->x509_validator, config->max_verify_cert_chain_depth));
         }

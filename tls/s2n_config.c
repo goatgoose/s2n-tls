@@ -410,6 +410,14 @@ int s2n_config_set_verify_host_callback(struct s2n_config *config, s2n_verify_ho
     return 0;
 }
 
+int s2n_config_set_crl_for_cert_callback(struct s2n_config *config, s2n_crl_for_cert_fn crl_for_cert_fn, void *data)
+{
+    POSIX_ENSURE_REF(config);
+    config->crl_for_cert = crl_for_cert_fn;
+    config->data_for_crl_for_cert = data;
+    return 0;
+}
+
 int s2n_config_set_check_stapled_ocsp_response(struct s2n_config *config, uint8_t check_ocsp)
 {
     POSIX_ENSURE_REF(config);
