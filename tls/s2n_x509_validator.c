@@ -44,6 +44,11 @@ DEFINE_POINTER_CLEANUP_FUNC(OCSP_BASICRESP*, OCSP_BASICRESP_free);
 /* Time used by default for nextUpdate if none provided in OCSP: 1 hour since thisUpdate. */
 #define DEFAULT_OCSP_NEXT_UPDATE_PERIOD 3600000000000
 
+S2N_RESULT s2n_read_cert_chain(struct s2n_x509_validator *validator, struct s2n_connection *conn,
+        uint8_t *cert_chain_in, uint32_t cert_chain_len);
+S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_in, uint32_t cert_chain_len,
+        struct s2n_pkey *public_key, s2n_pkey_type *pkey_type, s2n_parsed_extensions_list *first_certificate_extensions);
+
 uint8_t s2n_x509_ocsp_stapling_supported(void) {
     return S2N_OCSP_STAPLING_SUPPORTED;
 }
@@ -288,8 +293,87 @@ static uint8_t s2n_verify_host_information(struct s2n_x509_validator *validator,
 
 S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *validator, struct s2n_connection *conn,
         uint8_t *cert_chain_in, uint32_t cert_chain_len, s2n_pkey_type *pkey_type, struct s2n_pkey *public_key_out) {
+    switch (validator->state) {
+        case INIT:
+        case PRE_VALIDATE:
+            break;
+        case AWAITING_CRL_CALLBACK:
+            RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
+        default:
+            RESULT_BAIL(S2N_ERR_INVALID_CERT_STATE);
+    }
+
+    if (validator->state == INIT) {
+        RESULT_GUARD(s2n_read_cert_chain(validator, conn, cert_chain_in, cert_chain_len));
+
+        if (!validator->skip_cert_validation) {
+            X509 *leaf = sk_X509_value(validator->cert_chain_from_wire, 0);
+            RESULT_ENSURE_REF(leaf);
+
+            if (conn->verify_host_fn) {
+                RESULT_ENSURE(s2n_verify_host_information(validator, conn, leaf), S2N_ERR_CERT_UNTRUSTED);
+            }
+
+            RESULT_GUARD_OSSL(X509_STORE_CTX_init(validator->store_ctx, validator->trust_store->trust_store, leaf,
+                    validator->cert_chain_from_wire), S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
+
+            if (0) { // crl callback exists
+                // async crl callback
+            }
+
+            validator->state = PRE_VALIDATE;
+        }
+    }
+
+    if (validator->state == PRE_VALIDATE) {
+        X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(validator->store_ctx);
+        X509_VERIFY_PARAM_set_depth(param, validator->max_chain_depth);
+
+        if (0) { // crl callback exists
+            // set X509_VERIFY_PARAMs for CRL validation
+        }
+
+        uint64_t current_sys_time = 0;
+        conn->config->wall_clock(conn->config->sys_clock_ctx, &current_sys_time);
+
+        /* this wants seconds not nanoseconds */
+        time_t current_time = (time_t)(current_sys_time / 1000000000);
+        X509_STORE_CTX_set_time(validator->store_ctx, 0, current_time);
+
+        int verify_ret = X509_verify_cert(validator->store_ctx);
+        if (verify_ret <= 0) {
+            int ossl_error = X509_STORE_CTX_get_error(validator->store_ctx);
+            switch (ossl_error) {
+                case X509_V_ERR_CERT_HAS_EXPIRED:
+                    RESULT_BAIL(S2N_ERR_CERT_EXPIRED);
+                default:
+                    RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
+            }
+        }
+
+        validator->state = VALIDATED;
+    }
+
+    DEFER_CLEANUP(struct s2n_pkey public_key = {0}, s2n_pkey_free);
+    s2n_pkey_zero_init(&public_key);
+    s2n_parsed_extensions_list first_certificate_extensions = {0};
+    RESULT_GUARD(s2n_read_leaf_info(conn, cert_chain_in, cert_chain_len, &public_key, pkey_type, &first_certificate_extensions));
+
+    if (conn->actual_protocol_version >= S2N_TLS13) {
+        RESULT_GUARD_POSIX(s2n_extension_list_process(S2N_EXTENSION_LIST_CERTIFICATE, conn, &first_certificate_extensions));
+    }
+
+    *public_key_out = public_key;
+
+    /* Reset the old struct, so we don't clean up public_key_out */
+    s2n_pkey_zero_init(&public_key);
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_read_cert_chain(struct s2n_x509_validator *validator, struct s2n_connection *conn,
+                               uint8_t *cert_chain_in, uint32_t cert_chain_len) {
     RESULT_ENSURE(validator->skip_cert_validation || s2n_x509_trust_store_has_certs(validator->trust_store), S2N_ERR_CERT_UNTRUSTED);
-    RESULT_ENSURE(validator->state == INIT, S2N_ERR_INVALID_CERT_STATE);
 
     struct s2n_blob cert_chain_blob = {.data = cert_chain_in, .size = cert_chain_len};
     DEFER_CLEANUP(struct s2n_stuffer cert_chain_in_stuffer = {0}, s2n_stuffer_free);
@@ -297,12 +381,7 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
     RESULT_GUARD_POSIX(s2n_stuffer_init(&cert_chain_in_stuffer, &cert_chain_blob));
     RESULT_GUARD_POSIX(s2n_stuffer_write(&cert_chain_in_stuffer, &cert_chain_blob));
 
-    s2n_parsed_extensions_list first_certificate_extensions = {0};
-
     X509 *server_cert = NULL;
-
-    DEFER_CLEANUP(struct s2n_pkey public_key = {0}, s2n_pkey_free);
-    s2n_pkey_zero_init(&public_key);
 
     while (s2n_stuffer_data_available(&cert_chain_in_stuffer) && sk_X509_num(validator->cert_chain_from_wire) < validator->max_chain_depth) {
         uint32_t certificate_size = 0;
@@ -334,71 +413,60 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
             RESULT_ENSURE_OK(s2n_validate_certificate_signature(conn, server_cert), S2N_ERR_CERT_UNTRUSTED);
         }
 
-        /* Pull the public key from the first certificate */
-        if (sk_X509_num(validator->cert_chain_from_wire) == 1) {
-            RESULT_ENSURE(s2n_asn1der_to_public_key_and_type(&public_key, pkey_type, &asn1cert) == 0,
-                    S2N_ERR_CERT_UNTRUSTED);
-        }
-
         /* certificate extensions is a field in TLS 1.3 - https://tools.ietf.org/html/rfc8446#section-4.4.2 */
         if (conn->actual_protocol_version >= S2N_TLS13) {
             s2n_parsed_extensions_list parsed_extensions_list = { 0 };
             RESULT_GUARD_POSIX(s2n_extension_list_parse(&cert_chain_in_stuffer, &parsed_extensions_list));
-
-            /* RFC 8446: if an extension applies to the entire chain, it SHOULD be included in the first CertificateEntry */      
-            if (sk_X509_num(validator->cert_chain_from_wire) == 1) {
-                first_certificate_extensions = parsed_extensions_list;
-            }
         }
     }
 
     /* if this occurred we exceeded validator->max_chain_depth */
     RESULT_ENSURE(validator->skip_cert_validation || s2n_stuffer_data_available(&cert_chain_in_stuffer) == 0,
-            S2N_ERR_CERT_MAX_CHAIN_DEPTH_EXCEEDED);
+                  S2N_ERR_CERT_MAX_CHAIN_DEPTH_EXCEEDED);
     RESULT_ENSURE(sk_X509_num(validator->cert_chain_from_wire) > 0, S2N_ERR_NO_CERT_FOUND);
 
-    if (!validator->skip_cert_validation) {
-        X509 *leaf = sk_X509_value(validator->cert_chain_from_wire, 0);
-        RESULT_ENSURE_REF(leaf);
-        if (conn->verify_host_fn) {
-            RESULT_ENSURE(s2n_verify_host_information(validator, conn, leaf), S2N_ERR_CERT_UNTRUSTED);
-        }
+    return S2N_RESULT_OK;
+}
 
-        RESULT_GUARD_OSSL(X509_STORE_CTX_init(validator->store_ctx, validator->trust_store->trust_store, leaf,
-                validator->cert_chain_from_wire), S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
+S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_in, uint32_t cert_chain_len,
+                              struct s2n_pkey *public_key, s2n_pkey_type *pkey_type,
+                              s2n_parsed_extensions_list *first_certificate_extensions) {
+    struct s2n_blob cert_chain_blob = {.data = cert_chain_in, .size = cert_chain_len};
+    DEFER_CLEANUP(struct s2n_stuffer cert_chain_in_stuffer = {0}, s2n_stuffer_free);
 
-        X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(validator->store_ctx);
-        X509_VERIFY_PARAM_set_depth(param, validator->max_chain_depth);
+    RESULT_GUARD_POSIX(s2n_stuffer_init(&cert_chain_in_stuffer, &cert_chain_blob));
+    RESULT_GUARD_POSIX(s2n_stuffer_write(&cert_chain_in_stuffer, &cert_chain_blob));
 
-        uint64_t current_sys_time = 0;
-        conn->config->wall_clock(conn->config->sys_clock_ctx, &current_sys_time);
+    X509 *server_cert = NULL;
 
-        /* this wants seconds not nanoseconds */
-        time_t current_time = (time_t)(current_sys_time / 1000000000);
-        X509_STORE_CTX_set_time(validator->store_ctx, 0, current_time);
+    uint32_t certificate_size = 0;
 
-        int verify_ret = X509_verify_cert(validator->store_ctx);
-        if (verify_ret <= 0) {
-            int ossl_error = X509_STORE_CTX_get_error(validator->store_ctx);
-            switch (ossl_error) {
-                case X509_V_ERR_CERT_HAS_EXPIRED:
-                    RESULT_BAIL(S2N_ERR_CERT_EXPIRED);
-                default:
-                    RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
-            }
-        }
+    RESULT_GUARD_POSIX(s2n_stuffer_read_uint24(&cert_chain_in_stuffer, &certificate_size));
+    RESULT_ENSURE(certificate_size > 0, S2N_ERR_CERT_INVALID);
+    RESULT_ENSURE(certificate_size <= s2n_stuffer_data_available(&cert_chain_in_stuffer), S2N_ERR_CERT_INVALID);
 
-        validator->state = VALIDATED;
-    }
+    struct s2n_blob asn1cert = {0};
+    asn1cert.size = certificate_size;
+    asn1cert.data = s2n_stuffer_raw_read(&cert_chain_in_stuffer, certificate_size);
+    RESULT_ENSURE_REF(asn1cert.data);
 
+    const uint8_t *data = asn1cert.data;
+
+    /* the cert is der encoded, just convert it. */
+    server_cert = d2i_X509(NULL, &data, asn1cert.size);
+    RESULT_ENSURE_REF(server_cert);
+
+    RESULT_ENSURE(s2n_asn1der_to_public_key_and_type(public_key, pkey_type, &asn1cert) == 0,
+                  S2N_ERR_CERT_UNTRUSTED);
+
+    /* certificate extensions is a field in TLS 1.3 - https://tools.ietf.org/html/rfc8446#section-4.4.2 */
     if (conn->actual_protocol_version >= S2N_TLS13) {
-        RESULT_GUARD_POSIX(s2n_extension_list_process(S2N_EXTENSION_LIST_CERTIFICATE, conn, &first_certificate_extensions));
+        s2n_parsed_extensions_list parsed_extensions_list = { 0 };
+        RESULT_GUARD_POSIX(s2n_extension_list_parse(&cert_chain_in_stuffer, &parsed_extensions_list));
+
+        /* RFC 8446: if an extension applies to the entire chain, it SHOULD be included in the first CertificateEntry */
+        *first_certificate_extensions = parsed_extensions_list;
     }
-
-    *public_key_out = public_key;
-
-    /* Reset the old struct, so we don't clean up public_key_out */
-    s2n_pkey_zero_init(&public_key);
 
     return S2N_RESULT_OK;
 }

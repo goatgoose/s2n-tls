@@ -32,6 +32,8 @@
 typedef enum {
     UNINIT,
     INIT,
+    AWAITING_CRL_CALLBACK,
+    PRE_VALIDATE,
     VALIDATED,
     OCSP_VALIDATED,
 } validator_state;
