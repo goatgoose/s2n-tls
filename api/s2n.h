@@ -944,19 +944,16 @@ int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl);
 
 struct s2n_crl_fn_context;
 
-typedef uint8_t (*s2n_crl_for_cert_fn) (struct s2n_crl_fn_context *s2n_context, void *data);
+typedef uint8_t (*s2n_crl_for_cert_fn) (struct s2n_crl_fn_context *s2n_crl_context, void *data);
 
 S2N_API
-int s2n_config_set_crl_for_cert_callback(struct s2n_config *config, s2n_crl_for_cert_fn, void *data);
+int s2n_config_set_crl_for_cert_callback(struct s2n_config *config, s2n_crl_for_cert_fn crl_for_cert, void *data);
 
 S2N_API
-int s2n_crl_for_cert_provide_crl(struct s2n_crl_fn_context, struct s2n_x509_crl crl);
+int s2n_crl_for_cert_accept(struct s2n_crl_fn_context *s2n_crl_context, struct s2n_x509_crl *crl);
 
 S2N_API
-int s2n_crl_for_cert_accept(struct s2n_crl_fn_context);
-
-S2N_API
-int s2n_crl_for_cert_reject(struct s2n_crl_fn_context);
+int s2n_crl_for_cert_reject(struct s2n_crl_fn_context *s2n_crl_context);
 
 /**
  * Toggles whether or not to validate stapled OCSP responses.

@@ -152,6 +152,7 @@ int s2n_x509_validator_init_no_x509_validation(struct s2n_x509_validator *valida
     validator->max_chain_depth = DEFAULT_MAX_CHAIN_DEPTH;
     validator->state = INIT;
     validator->cert_chain_from_wire = sk_X509_new_null();
+    validator->crl_for_cert_contexts = NULL;
 
     return 0;
 }
@@ -169,6 +170,7 @@ int s2n_x509_validator_init(struct s2n_x509_validator *validator, struct s2n_x50
     }
     validator->cert_chain_from_wire = sk_X509_new_null();
     validator->state = INIT;
+    validator->crl_for_cert_contexts = NULL;
 
     return 0;
 }
@@ -179,7 +181,7 @@ static inline void wipe_cert_chain(STACK_OF(X509) *cert_chain) {
     }
 }
 
-void s2n_x509_validator_wipe(struct s2n_x509_validator *validator) {
+int s2n_x509_validator_wipe(struct s2n_x509_validator *validator) {
     if (validator->store_ctx) {
         X509_STORE_CTX_free(validator->store_ctx);
         validator->store_ctx = NULL;
@@ -190,6 +192,12 @@ void s2n_x509_validator_wipe(struct s2n_x509_validator *validator) {
     validator->skip_cert_validation = 0;
     validator->state = UNINIT;
     validator->max_chain_depth = 0;
+    if (validator->crl_for_cert_contexts) {
+        POSIX_GUARD_RESULT(s2n_array_free(validator->crl_for_cert_contexts));
+        validator->crl_for_cert_contexts = NULL;
+    }
+
+    return S2N_SUCCESS;
 }
 
 int s2n_x509_validator_set_max_chain_depth(struct s2n_x509_validator *validator, uint16_t max_depth) {
@@ -317,8 +325,8 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
             RESULT_GUARD_OSSL(X509_STORE_CTX_init(validator->store_ctx, validator->trust_store->trust_store, leaf,
                     validator->cert_chain_from_wire), S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
 
-            if (0) { // crl callback exists
-                // async crl callback
+            if (conn->crl_for_cert) {
+
             }
 
             validator->state = PRE_VALIDATE;
@@ -656,5 +664,14 @@ int s2n_x509_crl_init(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
 int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl) {
     POSIX_ENSURE_REF(crl->crl);
     *ossl_crl = crl->crl;
+    return S2N_SUCCESS;
+}
+
+int s2n_crl_for_cert_accept(struct s2n_crl_fn_context *s2n_crl_context, struct s2n_x509_crl *crl) {
+    s2n_crl_context->crl = crl;
+    return S2N_SUCCESS;
+}
+
+int s2n_crl_for_cert_reject(struct s2n_crl_fn_context *s2n_crl_context) {
     return S2N_SUCCESS;
 }

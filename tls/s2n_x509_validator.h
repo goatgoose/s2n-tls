@@ -61,6 +61,7 @@ struct s2n_x509_validator {
     uint16_t max_chain_depth;
     STACK_OF(X509) *cert_chain_from_wire;
     int state;
+    struct s2n_array *crl_for_cert_contexts;
 };
 
 struct s2n_x509_cert {
@@ -71,9 +72,18 @@ struct s2n_x509_crl {
     X509_CRL *crl;
 };
 
+typedef enum {
+    AWAITING_RESPONSE,
+    ACCEPTED,
+    REJECTED
+} crl_fn_context_state;
+
 struct s2n_crl_fn_context {
+    crl_fn_context_state state;
     struct s2n_x509_cert *cert;
+    uint16_t cert_idx;
     struct s2n_x509_validator *validator;
+    struct s2n_x509_crl *crl;
 };
 
 /** Some libcrypto implementations do not support OCSP validation. Returns 1 if supported, 0 otherwise. */
@@ -113,7 +123,7 @@ int s2n_x509_validator_init(struct s2n_x509_validator *validator, struct s2n_x50
 int s2n_x509_validator_set_max_chain_depth(struct s2n_x509_validator *validator, uint16_t max_depth);
 
 /** Cleans up underlying memory and data members. Struct can be reused afterwards. */
-void s2n_x509_validator_wipe(struct s2n_x509_validator *validator);
+int s2n_x509_validator_wipe(struct s2n_x509_validator *validator);
 
 /**
  * Validates a certificate chain against the configured trust store in safe mode. In unsafe mode, it will find the public key
