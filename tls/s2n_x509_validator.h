@@ -76,15 +76,18 @@ typedef enum {
     AWAITING_RESPONSE,
     ACCEPTED,
     REJECTED
-} crl_fn_context_state;
+} crl_for_cert_fn_status;
 
-struct s2n_crl_fn_context {
-    crl_fn_context_state state;
+struct s2n_crl_for_cert_context {
+    crl_for_cert_fn_status status;
     struct s2n_x509_cert *cert;
     uint16_t cert_idx;
-    struct s2n_x509_validator *validator;
     struct s2n_x509_crl *crl;
 };
+
+S2N_RESULT s2n_crl_for_cert_context_allocate(struct s2n_crl_for_cert_context **context);
+S2N_RESULT s2n_crl_for_cert_context_init(struct s2n_crl_for_cert_context *context);
+S2N_RESULT s2n_crl_for_cert_context_free(struct s2n_crl_for_cert_context *context);
 
 /** Some libcrypto implementations do not support OCSP validation. Returns 1 if supported, 0 otherwise. */
 uint8_t s2n_x509_ocsp_stapling_supported(void);

@@ -643,6 +643,33 @@ bool s2n_x509_validator_is_cert_chain_validated(const struct s2n_x509_validator 
     return validator && (validator->state == VALIDATED || validator->state == OCSP_VALIDATED);
 }
 
+S2N_RESULT s2n_crl_for_cert_context_allocate(struct s2n_crl_for_cert_context **context) {
+    RESULT_ENSURE_REF(context);
+    RESULT_ENSURE(*context == NULL, S2N_ERR_SAFETY);
+
+    DEFER_CLEANUP(struct s2n_blob mem = {0}, s2n_free);
+    RESULT_GUARD_POSIX(s2n_alloc(&mem, sizeof(struct s2n_crl_for_cert_context)));
+    RESULT_GUARD_POSIX(s2n_blob_zero(&mem));
+
+    *context = (struct s2n_crl_for_cert_context *) (void *) mem.data;
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_crl_for_cert_context_init(struct s2n_crl_for_cert_context *context) {
+    context->status = AWAITING_RESPONSE;
+    context->cert = NULL;
+    context->cert_idx = -1;
+    context->crl = NULL;
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_crl_for_cert_context_free(struct s2n_crl_for_cert_context *context) {
+    RESULT_GUARD_POSIX(s2n_free_object(( uint8_t ** )&context, sizeof(struct s2n_crl_for_cert_context)));
+    return S2N_RESULT_OK;
+}
+
 int s2n_x509_cert_init(struct s2n_x509_cert *cert, X509 *ossl_cert) {
     POSIX_ENSURE_REF(ossl_cert);
     cert->cert = ossl_cert;
@@ -655,7 +682,7 @@ int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert) {
     return S2N_SUCCESS;
 }
 
-int s2n_x509_crl_init(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
+int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
     POSIX_ENSURE_REF(ossl_crl);
     crl->crl = ossl_crl;
     return S2N_SUCCESS;
@@ -667,11 +694,11 @@ int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl) {
     return S2N_SUCCESS;
 }
 
-int s2n_crl_for_cert_accept(struct s2n_crl_fn_context *s2n_crl_context, struct s2n_x509_crl *crl) {
+int s2n_crl_for_cert_accept(struct s2n_crl_for_cert_context *s2n_crl_context, struct s2n_x509_crl *crl) {
     s2n_crl_context->crl = crl;
     return S2N_SUCCESS;
 }
 
-int s2n_crl_for_cert_reject(struct s2n_crl_fn_context *s2n_crl_context) {
+int s2n_crl_for_cert_reject(struct s2n_crl_for_cert_context *s2n_crl_context) {
     return S2N_SUCCESS;
 }
