@@ -111,6 +111,12 @@ static uint8_t verify_host_verify_alt(const char *host_name, size_t host_name_le
     return 0;
 }
 
+static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
+    printf("in the callback!\n");
+    s2n_crl_for_cert_accept(s2n_crl_context, NULL);
+    return 0;
+}
+
 int main(int argc, char **argv) {
 
     BEGIN_TEST();
@@ -1633,6 +1639,57 @@ int main(int argc, char **argv) {
             EXPECT_TRUE(s2n_x509_trust_store_has_certs(&cfg->trust_store));
             free(cert_chain);
             s2n_config_free(cfg);
+        }
+    }
+
+    /* test CRL validation */
+    {
+        {
+            struct s2n_x509_trust_store trust_store;
+            s2n_x509_trust_store_init_empty(&trust_store);
+
+            char *cert_chain = NULL;
+            EXPECT_NOT_NULL(cert_chain = malloc(S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_DEFAULT_TEST_CERT_CHAIN, cert_chain, S2N_MAX_TEST_PEM_SIZE));
+            int err_code = s2n_x509_trust_store_add_pem(&trust_store, cert_chain);
+            free(cert_chain);
+            EXPECT_EQUAL(0, err_code);
+
+            struct s2n_x509_validator validator;
+            s2n_x509_validator_init(&validator, &trust_store, 1);
+
+            struct s2n_config *config = s2n_config_new();
+            EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, NULL));
+
+            struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT);
+            EXPECT_NOT_NULL(connection);
+            EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
+
+            struct host_verify_data verify_data = { .callback_invoked = 0, .found_name = 0, .name = NULL };
+            EXPECT_SUCCESS(s2n_connection_set_verify_host_callback(connection, verify_host_accept_everything, &verify_data));
+
+            uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE];
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_DEFAULT_TEST_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
+            /* The default cert chain includes a SHA1 signature, so the security policy must allow SHA1 cert signatures. */
+            EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(connection, "default"));
+            struct s2n_stuffer chain_stuffer;
+            uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
+            EXPECT_TRUE(chain_len > 0);
+            uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
+
+            struct s2n_pkey public_key_out;
+            EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
+            s2n_pkey_type pkey_type;
+            EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out));
+
+            s2n_stuffer_free(&chain_stuffer);
+            EXPECT_EQUAL(1, verify_data.callback_invoked);
+            EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
+            s2n_connection_free(connection);
+            s2n_pkey_free(&public_key_out);
+
+            s2n_x509_validator_wipe(&validator);
+            s2n_x509_trust_store_wipe(&trust_store);
         }
     }
 
