@@ -1657,27 +1657,25 @@ int main(int argc, char **argv) {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
 
-            char *cert_chain = NULL;
-            EXPECT_NOT_NULL(cert_chain = malloc(S2N_MAX_TEST_PEM_SIZE));
-            EXPECT_SUCCESS(s2n_read_test_pem(S2N_DEFAULT_TEST_CERT_CHAIN, cert_chain, S2N_MAX_TEST_PEM_SIZE));
-            int err_code = s2n_x509_trust_store_add_pem(&trust_store, cert_chain);
-            free(cert_chain);
-            EXPECT_EQUAL(0, err_code);
+            DEFER_CLEANUP(char *root_cert = NULL, free_pointer);
+            EXPECT_NOT_NULL(root_cert = malloc(S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
 
             DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
-            s2n_x509_validator_init(&validator, &trust_store, 1);
+            EXPECT_SUCCESS(s2n_x509_validator_init(&validator, &trust_store, 0));
 
-            struct s2n_config *config = s2n_config_new();
+            DEFER_CLEANUP(struct s2n_config *config = s2n_config_new(), s2n_config_ptr_free);
+            EXPECT_NOT_NULL(config);
             EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, NULL));
 
             DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
             EXPECT_NOT_NULL(connection);
             EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
+            EXPECT_SUCCESS(s2n_set_server_name(connection, "localhost"));
 
             uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE];
-            EXPECT_SUCCESS(s2n_read_test_pem(S2N_DEFAULT_TEST_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
-            /* The default cert chain includes a SHA1 signature, so the security policy must allow SHA1 cert signatures. */
-            EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(connection, "default"));
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_NONE_REVOKED_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
             DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
             uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
             EXPECT_TRUE(chain_len > 0);

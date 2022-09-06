@@ -75,4 +75,3 @@ int s2n_read_test_pem_and_len(const char *pem_path, uint8_t *pem_out, uint32_t *
 
     return 0;
 }
-

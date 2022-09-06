@@ -83,7 +83,7 @@ S2N_RESULT s2n_connection_set_test_early_secret(struct s2n_connection *conn, con
 S2N_RESULT s2n_connection_set_test_handshake_secret(struct s2n_connection *conn, const struct s2n_blob *handshake_secret);
 S2N_RESULT s2n_connection_set_test_master_secret(struct s2n_connection *conn, const struct s2n_blob *master_secret);
 
-#define S2N_MAX_TEST_PEM_SIZE 4096
+#define S2N_MAX_TEST_PEM_SIZE 8192
 
 /* These paths assume that the unit tests are run from inside the unit/ directory.
  * Absolute paths will be needed if test directories go to deeper levels.
@@ -167,6 +167,22 @@ S2N_RESULT s2n_connection_set_test_master_secret(struct s2n_connection *conn, co
 #define S2N_DEFAULT_TEST_DHPARAMS S2N_DHPARAMS_2048
 
 /* CRL testing files */
+#define S2N_CRL_ROOT_CERT                               "../pems/crl/root_cert.pem"
+#define S2N_CRL_NONE_REVOKED_CERT_CHAIN                 "../pems/crl/none_revoked_cert_chain.pem"
+#define S2N_CRL_NONE_REVOKED_KEY                        "../pems/crl/none_revoked_key.pem"
+#define S2N_CRL_INTERMEDIATE_REVOKED_CERT_CHAIN         "../pems/crl/intermediate_revoked_cert_chain.pem"
+#define S2N_CRL_INTERMEDIATE_REVOKED_KEY                "../pems/crl/intermediate_revoked_key.pem"
+#define S2N_CRL_LEAF_REVOKED_CERT_CHAIN                 "../pems/crl/leaf_revoked_cert_chain.pem"
+#define S2N_CRL_LEAF_REVOKED_KEY                        "../pems/crl/leaf_revoked_key.pem"
+#define S2N_CRL_ALL_REVOKED_CERT_CHAIN                  "../pems/crl/all_revoked_cert_chain.pem"
+#define S2N_CRL_ALL_REVOKED_KEY                         "../pems/crl/all_revoked_key.pem"
+#define S2N_CRL_ROOT_CRL                                "../pems/crl/root_crl.pem"
+#define S2N_CRL_INTERMEDIATE_CRL                        "../pems/crl/intermediate_crl.pem"
+#define S2N_CRL_INTERMEDIATE_REVOKED_CRL                "../pems/crl/intermediate_revoked_crl.pem"
+#define S2N_CRL_INTERMEDIATE_INVALID_LAST_UPDATE_CRL    "../pems/crl/intermediate_invalid_last_update_crl.pem"
+#define S2N_CRL_INTERMEDIATE_INVALID_NEXT_UPDATE_CRL    "../pems/crl/intermediate_invalid_next_update_crl.pem"
+
+DEFINE_POINTER_CLEANUP_FUNC(char*, free);
 
 /* Read a cert given a path into pem_out */
 int s2n_read_test_pem(const char *pem_path, char *pem_out, long int max_size);
