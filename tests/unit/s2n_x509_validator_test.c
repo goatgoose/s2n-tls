@@ -111,9 +111,18 @@ static uint8_t verify_host_verify_alt(const char *host_name, size_t host_name_le
     return 0;
 }
 
+struct crl_for_cert_data {
+    struct s2n_array *crls;
+};
+
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
-    struct s2n_x509_crl crl = { 0 };
-    s2n_crl_for_cert_accept(s2n_crl_context, &crl);
+    struct crl_for_cert_data *crl_data = (struct crl_for_cert_data*) data;
+
+    struct s2n_x509_crl *crl = NULL;
+    POSIX_GUARD_RESULT(s2n_array_get(crl_data->crls, s2n_crl_context->cert_idx, (void**) &crl));
+    POSIX_ENSURE_REF(crl);
+
+    s2n_crl_for_cert_accept(s2n_crl_context, crl);
     return 0;
 }
 
@@ -1657,7 +1666,7 @@ int main(int argc, char **argv) {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
 
-            DEFER_CLEANUP(char *root_cert = NULL, free_pointer);
+            DEFER_CLEANUP(char *root_cert = NULL, free_char_array_pointer);
             EXPECT_NOT_NULL(root_cert = malloc(S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
@@ -1668,6 +1677,12 @@ int main(int argc, char **argv) {
             DEFER_CLEANUP(struct s2n_config *config = s2n_config_new(), s2n_config_ptr_free);
             EXPECT_NOT_NULL(config);
             EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, NULL));
+
+            DEFER_CLEANUP(struct s2n_array *crls = s2n_array_new(sizeof(struct s2n_x509_crl)), s2n_array_free_p);
+            EXPECT_NOT_NULL(crls);
+
+            struct s2n_x509_crl root_crl = { 0 };
+            EXPECT_SUCCESS(s2n_read_test_crl(S2N_CRL_ROOT_CRL, &root_crl, S2N_MAX_TEST_PEM_SIZE));
 
             DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
             EXPECT_NOT_NULL(connection);
@@ -1691,7 +1706,7 @@ int main(int argc, char **argv) {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
 
-            DEFER_CLEANUP(char *root_cert = NULL, free_pointer);
+            DEFER_CLEANUP(char *root_cert = NULL, free_char_array_pointer);
             EXPECT_NOT_NULL(root_cert = malloc(S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
@@ -1726,7 +1741,7 @@ int main(int argc, char **argv) {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
 
-            DEFER_CLEANUP(char *root_cert = NULL, free_pointer);
+            DEFER_CLEANUP(char *root_cert = NULL, free_char_array_pointer);
             EXPECT_NOT_NULL(root_cert = malloc(S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
             EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
