@@ -51,7 +51,7 @@ S2N_RESULT s2n_read_cert_chain(struct s2n_x509_validator *validator, struct s2n_
 S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_in, uint32_t cert_chain_len,
         struct s2n_pkey *public_key, s2n_pkey_type *pkey_type, s2n_parsed_extensions_list *first_certificate_extensions);
 
-S2N_RESULT s2n_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status);
+S2N_RESULT s2n_get_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status);
 
 int ossl_verify_noop(X509_STORE_CTX *ctx) {
     return 1;
@@ -378,6 +378,18 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
 
                     RESULT_GUARD_POSIX(conn->crl_for_cert(context, conn->data_for_crl_for_cert));
                 }
+
+                crl_for_cert_callback_status status = 0;
+                RESULT_GUARD(s2n_get_crl_for_cert_callback_status(validator, &status));
+                switch (status) {
+                    case ACCEPTED:
+                        break;
+                    case REJECTED:
+                        /* TODO: S2N_ERR_CRL_LOOKUP */
+                        RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
+                    case AWAITING_RESPONSE:
+                        RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
+                }
             }
 
             validator->state = PRE_VALIDATE;
@@ -530,7 +542,7 @@ S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_i
     return S2N_RESULT_OK;
 }
 
-S2N_RESULT s2n_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status) {
+S2N_RESULT s2n_get_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status) {
     RESULT_ENSURE_REF(validator->crl_for_cert_contexts);
 
     *status = ACCEPTED;
@@ -545,11 +557,11 @@ S2N_RESULT s2n_crl_for_cert_callback_status(struct s2n_x509_validator *validator
         switch (context->status) {
             case ACCEPTED:
                 break;
-            case AWAITING_RESPONSE:
-                *status = AWAITING_RESPONSE;
-                return S2N_RESULT_OK;
             case REJECTED:
                 *status = REJECTED;
+                return S2N_RESULT_OK;
+            case AWAITING_RESPONSE:
+                *status = AWAITING_RESPONSE;
                 return S2N_RESULT_OK;
         }
     }
