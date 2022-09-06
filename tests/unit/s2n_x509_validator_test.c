@@ -1651,7 +1651,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* test CRL validation */
+    /* Test CRL validation */
     {
         {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
@@ -1685,6 +1685,41 @@ int main(int argc, char **argv) {
             EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
             s2n_pkey_type pkey_type;
             EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out));
+            EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
+        }
+        {
+            DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
+            s2n_x509_trust_store_init_empty(&trust_store);
+
+            DEFER_CLEANUP(char *root_cert = NULL, free_pointer);
+            EXPECT_NOT_NULL(root_cert = malloc(S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
+
+            DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
+            EXPECT_SUCCESS(s2n_x509_validator_init(&validator, &trust_store, 0));
+
+            DEFER_CLEANUP(struct s2n_config *config = s2n_config_new(), s2n_config_ptr_free);
+            EXPECT_NOT_NULL(config);
+            EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_reject_everything, NULL));
+
+            DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(connection);
+            EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
+            EXPECT_SUCCESS(s2n_set_server_name(connection, "localhost"));
+
+            uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE];
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_NONE_REVOKED_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
+            DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
+            uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
+            EXPECT_TRUE(chain_len > 0);
+            uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
+
+            DEFER_CLEANUP(struct s2n_pkey public_key_out = { 0 }, s2n_pkey_free);
+            EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
+            s2n_pkey_type pkey_type;
+            EXPECT_ERROR_WITH_ERRNO(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out),
+                    S2N_ERR_CERT_UNTRUSTED);
             EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
         }
     }
