@@ -166,6 +166,8 @@ S2N_RESULT s2n_connection_set_test_master_secret(struct s2n_connection *conn, co
 
 #define S2N_DEFAULT_TEST_DHPARAMS S2N_DHPARAMS_2048
 
+/* CRL testing files */
+
 /* Read a cert given a path into pem_out */
 int s2n_read_test_pem(const char *pem_path, char *pem_out, long int max_size);
 int s2n_read_test_pem_and_len(const char *pem_path, uint8_t *pem_out, uint32_t *pem_len, long int max_size);

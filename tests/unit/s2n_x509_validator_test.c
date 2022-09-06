@@ -112,12 +112,17 @@ static uint8_t verify_host_verify_alt(const char *host_name, size_t host_name_le
 }
 
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
-    printf("in the callback!\n");
-    printf("status: %d\n", s2n_crl_context->status);
-    printf("cert idx: %d\n", s2n_crl_context->cert_idx);
-
     struct s2n_x509_crl crl = { 0 };
     s2n_crl_for_cert_accept(s2n_crl_context, &crl);
+    return 0;
+}
+
+static uint8_t crl_for_cert_reject_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
+    s2n_crl_for_cert_reject(s2n_crl_context);
+    return 0;
+}
+
+static uint8_t crl_for_cert_noop(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
     return 0;
 }
 
@@ -1649,7 +1654,7 @@ int main(int argc, char **argv) {
     /* test CRL validation */
     {
         {
-            struct s2n_x509_trust_store trust_store;
+            DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
 
             char *cert_chain = NULL;
@@ -1659,41 +1664,30 @@ int main(int argc, char **argv) {
             free(cert_chain);
             EXPECT_EQUAL(0, err_code);
 
-            struct s2n_x509_validator validator;
+            DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
             s2n_x509_validator_init(&validator, &trust_store, 1);
 
             struct s2n_config *config = s2n_config_new();
             EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, NULL));
 
-            struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT);
+            DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
             EXPECT_NOT_NULL(connection);
             EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
-
-            struct host_verify_data verify_data = { .callback_invoked = 0, .found_name = 0, .name = NULL };
-            EXPECT_SUCCESS(s2n_connection_set_verify_host_callback(connection, verify_host_accept_everything, &verify_data));
 
             uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE];
             EXPECT_SUCCESS(s2n_read_test_pem(S2N_DEFAULT_TEST_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
             /* The default cert chain includes a SHA1 signature, so the security policy must allow SHA1 cert signatures. */
             EXPECT_SUCCESS(s2n_connection_set_cipher_preferences(connection, "default"));
-            struct s2n_stuffer chain_stuffer;
+            DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
             uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
             EXPECT_TRUE(chain_len > 0);
             uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
 
-            struct s2n_pkey public_key_out;
+            DEFER_CLEANUP(struct s2n_pkey public_key_out = { 0 }, s2n_pkey_free);
             EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
             s2n_pkey_type pkey_type;
             EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out));
-
-            s2n_stuffer_free(&chain_stuffer);
-            EXPECT_EQUAL(1, verify_data.callback_invoked);
             EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
-            s2n_connection_free(connection);
-            s2n_pkey_free(&public_key_out);
-
-            s2n_x509_validator_wipe(&validator);
-            s2n_x509_trust_store_wipe(&trust_store);
         }
     }
 
