@@ -932,7 +932,7 @@ extern int s2n_config_set_verify_host_callback(struct s2n_config *config, s2n_ve
 
 struct s2n_x509_cert;
 
-int s2n_x509_cert_init(struct s2n_x509_cert *cert, X509 *ossl_cert);
+int s2n_x509_cert_set_cert(struct s2n_x509_cert *cert, X509 *ossl_cert);
 
 int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert);
 

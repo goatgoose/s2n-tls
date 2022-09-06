@@ -51,6 +51,12 @@ S2N_RESULT s2n_read_cert_chain(struct s2n_x509_validator *validator, struct s2n_
 S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_in, uint32_t cert_chain_len,
         struct s2n_pkey *public_key, s2n_pkey_type *pkey_type, s2n_parsed_extensions_list *first_certificate_extensions);
 
+S2N_RESULT s2n_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status);
+
+int ossl_verify_noop(X509_STORE_CTX *ctx) {
+    return 1;
+}
+
 uint8_t s2n_x509_ocsp_stapling_supported(void) {
     return S2N_OCSP_STAPLING_SUPPORTED;
 }
@@ -345,14 +351,33 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
 
                 for (int i = 0; i < cert_count; ++i) {
                     DEFER_CLEANUP(struct s2n_crl_for_cert_context* context = NULL, s2n_crl_for_cert_context_free_pointer);
-                    RESULT_GUARD(s2n_crl_for_cert_context_allocate(&context));
-                    RESULT_GUARD(s2n_crl_for_cert_context_init(context));
                     RESULT_GUARD(s2n_array_pushback(crl_for_cert_contexts, (void**) &context));
+
+                    RESULT_GUARD(s2n_crl_for_cert_context_init(context));
+
+                    X509 *cert = sk_X509_value(chain, i);
+                    RESULT_ENSURE_REF(cert);
+                    struct s2n_x509_cert s2n_cert;
+                    RESULT_GUARD_POSIX(s2n_x509_cert_set_cert(&s2n_cert, cert));
+
+                    context->cert = s2n_cert;
+                    context->cert_idx = i;
+
                     ZERO_TO_DISABLE_DEFER_CLEANUP(context);
                 }
 
                 validator->crl_for_cert_contexts = crl_for_cert_contexts;
                 ZERO_TO_DISABLE_DEFER_CLEANUP(crl_for_cert_contexts);
+
+                uint32_t num_contexts = 0;
+                RESULT_GUARD(s2n_array_num_elements(validator->crl_for_cert_contexts, &num_contexts));
+                for (uint32_t i = 0; i < num_contexts; i++) {
+                    struct s2n_crl_for_cert_context *context = NULL;
+                    RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, (void**) &context));
+                    RESULT_ENSURE_REF(context);
+
+                    RESULT_GUARD_POSIX(conn->crl_for_cert(context, conn->data_for_crl_for_cert));
+                }
             }
 
             validator->state = PRE_VALIDATE;
@@ -500,6 +525,33 @@ S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_i
 
         /* RFC 8446: if an extension applies to the entire chain, it SHOULD be included in the first CertificateEntry */
         *first_certificate_extensions = parsed_extensions_list;
+    }
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status) {
+    RESULT_ENSURE_REF(validator->crl_for_cert_contexts);
+
+    *status = ACCEPTED;
+
+    uint32_t num_contexts = 0;
+    RESULT_GUARD(s2n_array_num_elements(validator->crl_for_cert_contexts, &num_contexts));
+    for (uint32_t i = 0; i < num_contexts; i++) {
+        struct s2n_crl_for_cert_context *context = NULL;
+        RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, ( void ** )&context));
+        RESULT_ENSURE_REF(context);
+
+        switch (context->status) {
+            case ACCEPTED:
+                break;
+            case AWAITING_RESPONSE:
+                *status = AWAITING_RESPONSE;
+                return S2N_RESULT_OK;
+            case REJECTED:
+                *status = REJECTED;
+                return S2N_RESULT_OK;
+        }
     }
 
     return S2N_RESULT_OK;
@@ -684,9 +736,11 @@ S2N_RESULT s2n_crl_for_cert_context_allocate(struct s2n_crl_for_cert_context **c
 
 S2N_RESULT s2n_crl_for_cert_context_init(struct s2n_crl_for_cert_context *context) {
     context->status = AWAITING_RESPONSE;
-    context->cert = NULL;
+    struct s2n_x509_cert cert = { 0 };
+    context->cert = cert;
     context->cert_idx = -1;
-    context->crl = NULL;
+    struct s2n_x509_crl crl = { 0 };
+    context->crl = crl;
 
     return S2N_RESULT_OK;
 }
@@ -696,7 +750,7 @@ int s2n_crl_for_cert_context_free(struct s2n_crl_for_cert_context *context) {
     return S2N_SUCCESS;
 }
 
-int s2n_x509_cert_init(struct s2n_x509_cert *cert, X509 *ossl_cert) {
+int s2n_x509_cert_set_cert(struct s2n_x509_cert *cert, X509 *ossl_cert) {
     POSIX_ENSURE_REF(ossl_cert);
     cert->cert = ossl_cert;
     return S2N_SUCCESS;
@@ -721,7 +775,8 @@ int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl) {
 }
 
 int s2n_crl_for_cert_accept(struct s2n_crl_for_cert_context *s2n_crl_context, struct s2n_x509_crl *crl) {
-    s2n_crl_context->crl = crl;
+    POSIX_ENSURE_REF(crl);
+    s2n_crl_context->crl = *crl;
     s2n_crl_context->status = ACCEPTED;
     return S2N_SUCCESS;
 }

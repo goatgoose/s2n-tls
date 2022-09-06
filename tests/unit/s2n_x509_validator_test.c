@@ -113,7 +113,11 @@ static uint8_t verify_host_verify_alt(const char *host_name, size_t host_name_le
 
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
     printf("in the callback!\n");
-    s2n_crl_for_cert_accept(s2n_crl_context, NULL);
+    printf("status: %d\n", s2n_crl_context->status);
+    printf("cert idx: %d\n", s2n_crl_context->cert_idx);
+
+    struct s2n_x509_crl crl = { 0 };
+    s2n_crl_for_cert_accept(s2n_crl_context, &crl);
     return 0;
 }
 

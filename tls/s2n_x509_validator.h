@@ -76,13 +76,13 @@ typedef enum {
     AWAITING_RESPONSE,
     ACCEPTED,
     REJECTED
-} crl_for_cert_fn_status;
+} crl_for_cert_callback_status;
 
 struct s2n_crl_for_cert_context {
-    crl_for_cert_fn_status status;
-    struct s2n_x509_cert *cert;
+    crl_for_cert_callback_status status;
+    struct s2n_x509_cert cert;
     uint16_t cert_idx;
-    struct s2n_x509_crl *crl;
+    struct s2n_x509_crl crl;
 };
 
 S2N_RESULT s2n_crl_for_cert_context_allocate(struct s2n_crl_for_cert_context **context);
