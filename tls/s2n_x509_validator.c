@@ -317,10 +317,21 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
         uint8_t *cert_chain_in, uint32_t cert_chain_len, s2n_pkey_type *pkey_type, struct s2n_pkey *public_key_out) {
     switch (validator->state) {
         case INIT:
-        case PRE_VALIDATE:
             break;
-        case AWAITING_CRL_CALLBACK:
-            RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
+        case AWAITING_CRL_CALLBACK: {
+            crl_for_cert_callback_status status = 0;
+            RESULT_GUARD(s2n_get_crl_for_cert_callback_status(validator, &status));
+            switch (status) {
+                case ACCEPTED:
+                    validator->state = PRE_VALIDATE;
+                    break;
+                case REJECTED:
+                    /* TODO: S2N_ERR_CRL_LOOKUP */
+                    RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
+                case AWAITING_RESPONSE:
+                    RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
+            }
+        } break;
         default:
             RESULT_BAIL(S2N_ERR_INVALID_CERT_STATE);
     }
@@ -388,6 +399,7 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
                         /* TODO: S2N_ERR_CRL_LOOKUP */
                         RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
                     case AWAITING_RESPONSE:
+                        validator->state = AWAITING_CRL_CALLBACK;
                         RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
                 }
             }
