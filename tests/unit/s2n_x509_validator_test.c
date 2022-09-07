@@ -1659,6 +1659,19 @@ int main(int argc, char **argv) {
 
     /* Test CRL validation */
     {
+        DEFER_CLEANUP(char *root_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+        EXPECT_NOT_NULL(root_crl_pem);
+        EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CRL, root_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+        struct s2n_x509_crl root_crl = { 0 };
+        EXPECT_SUCCESS(s2n_x509_crl_from_pem(&root_crl, root_crl_pem));
+
+        DEFER_CLEANUP(char *intermediate_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+        EXPECT_NOT_NULL(intermediate_crl_pem);
+        EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE_CRL, intermediate_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+        struct s2n_x509_crl intermediate_crl = { 0 };
+        EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate_crl, intermediate_crl_pem));
+
+        /* CRL validation succeeds for unrevoked certificate chain */
         {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
@@ -1670,18 +1683,6 @@ int main(int argc, char **argv) {
 
             DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
             EXPECT_SUCCESS(s2n_x509_validator_init(&validator, &trust_store, 0));
-
-            DEFER_CLEANUP(char *root_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
-            EXPECT_NOT_NULL(root_crl_pem);
-            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CRL, root_crl_pem, S2N_MAX_TEST_PEM_SIZE));
-            struct s2n_x509_crl root_crl = { 0 };
-            EXPECT_SUCCESS(s2n_x509_crl_from_pem(&root_crl, root_crl_pem));
-
-            DEFER_CLEANUP(char *intermediate_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
-            EXPECT_NOT_NULL(intermediate_crl_pem);
-            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE_CRL, intermediate_crl_pem, S2N_MAX_TEST_PEM_SIZE));
-            struct s2n_x509_crl intermediate_crl = { 0 };
-            EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate_crl, intermediate_crl_pem));
 
             struct crl_for_cert_data data = { 0 };
             data.crls[0] = root_crl;
@@ -1712,6 +1713,52 @@ int main(int argc, char **argv) {
             EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out));
             EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
         }
+
+        /* CRL validation errors when a certificate is revoked */
+        {
+            DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
+            s2n_x509_trust_store_init_empty(&trust_store);
+
+            DEFER_CLEANUP(char *root_cert = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+            EXPECT_NOT_NULL(root_cert);
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
+            EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
+
+            DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
+            EXPECT_SUCCESS(s2n_x509_validator_init(&validator, &trust_store, 0));
+
+            struct crl_for_cert_data data = { 0 };
+            data.crls[0] = root_crl;
+            data.crls[1] = intermediate_crl;
+
+            DEFER_CLEANUP(struct s2n_config *config = s2n_config_new(), s2n_config_ptr_free);
+            EXPECT_NOT_NULL(config);
+            EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, &data));
+
+            DEFER_CLEANUP(struct s2n_array *crls = s2n_array_new(sizeof(struct s2n_x509_crl)), s2n_array_free_p);
+            EXPECT_NOT_NULL(crls);
+
+            DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(connection);
+            EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
+            EXPECT_SUCCESS(s2n_set_server_name(connection, "localhost"));
+
+            uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE];
+            EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_LEAF_REVOKED_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
+            DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
+            uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
+            EXPECT_TRUE(chain_len > 0);
+            uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
+
+            DEFER_CLEANUP(struct s2n_pkey public_key_out = { 0 }, s2n_pkey_free);
+            EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
+            s2n_pkey_type pkey_type;
+            EXPECT_ERROR_WITH_ERRNO(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len,
+                    &pkey_type, &public_key_out), S2N_ERR_CERT_REVOKED);
+            EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
+        }
+
+        /* s2n_x509_validator_validate_cert_chain errors when a CRL lookup callback responds with REJECTED */
         {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
@@ -1747,6 +1794,8 @@ int main(int argc, char **argv) {
                     S2N_ERR_CRL_LOOKUP_REJECTED);
             EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
         }
+
+        /* s2n_x509_validator_validate_cert_chain blocks until all CRL callbacks respond */
         {
             DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
             s2n_x509_trust_store_init_empty(&trust_store);
@@ -1787,8 +1836,7 @@ int main(int argc, char **argv) {
             struct s2n_crl_for_cert_context *context = NULL;
             EXPECT_OK(s2n_array_get(validator.crl_for_cert_contexts, 0, ( void ** )&context));
             EXPECT_NOT_NULL(context);
-            struct s2n_x509_crl crl = { 0 };
-            EXPECT_SUCCESS(s2n_crl_for_cert_accept(context, &crl));
+            EXPECT_SUCCESS(s2n_crl_for_cert_accept(context, &root_crl));
             EXPECT_ERROR_WITH_ERRNO(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out),
                     S2N_ERR_ASYNC_BLOCKED);
 
@@ -1796,7 +1844,7 @@ int main(int argc, char **argv) {
             context = NULL;
             EXPECT_OK(s2n_array_get(validator.crl_for_cert_contexts, 1, ( void ** )&context));
             EXPECT_NOT_NULL(context);
-            EXPECT_SUCCESS(s2n_crl_for_cert_accept(context, &crl));
+            EXPECT_SUCCESS(s2n_crl_for_cert_accept(context, &intermediate_crl));
             EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type, &public_key_out));
 
             EXPECT_EQUAL(S2N_PKEY_TYPE_RSA, pkey_type);
