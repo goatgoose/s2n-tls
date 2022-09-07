@@ -37,6 +37,7 @@ DEFINE_POINTER_CLEANUP_FUNC(OCSP_BASICRESP*, OCSP_BASICRESP_free);
 #endif
 
 DEFINE_POINTER_CLEANUP_FUNC(struct s2n_crl_for_cert_context*, s2n_crl_for_cert_context_free);
+DEFINE_POINTER_CLEANUP_FUNC(STACK_OF(X509_CRL)*, sk_X509_CRL_free);
 
 #ifndef X509_V_FLAG_PARTIAL_CHAIN
 #define X509_V_FLAG_PARTIAL_CHAIN 0x80000
@@ -55,6 +56,7 @@ S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_conne
 
 S2N_RESULT s2n_get_crl_for_cert_callback_status(struct s2n_x509_validator *validator, crl_for_cert_callback_status *status);
 S2N_RESULT s2n_handle_crl_for_cert_callback_result(struct s2n_x509_validator *validator);
+S2N_RESULT s2n_load_crls_from_contexts(struct s2n_x509_validator *validator);
 
 int ossl_verify_noop(X509_STORE_CTX *ctx) {
     return 1;
@@ -354,8 +356,9 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
         X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(validator->store_ctx);
         X509_VERIFY_PARAM_set_depth(param, validator->max_chain_depth);
 
-        if (0) { // crl callback exists
-            // set X509_VERIFY_PARAMs for CRL validation
+        if (conn->crl_for_cert) {
+            X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CRL_CHECK);
+            X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CRL_CHECK_ALL);
         }
 
         uint64_t current_sys_time = 0;
@@ -550,7 +553,7 @@ S2N_RESULT s2n_get_crl_for_cert_callback_status(struct s2n_x509_validator *valid
     RESULT_GUARD(s2n_array_num_elements(validator->crl_for_cert_contexts, &num_contexts));
     for (uint32_t i = 0; i < num_contexts; i++) {
         struct s2n_crl_for_cert_context *context = NULL;
-        RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, ( void ** )&context));
+        RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, ( void ** ) &context));
         RESULT_ENSURE_REF(context);
 
         switch (context->status) {
@@ -573,6 +576,7 @@ S2N_RESULT s2n_handle_crl_for_cert_callback_result(struct s2n_x509_validator *va
     RESULT_GUARD(s2n_get_crl_for_cert_callback_status(validator, &status));
     switch (status) {
         case ACCEPTED:
+            RESULT_GUARD(s2n_load_crls_from_contexts(validator));
             validator->state = PRE_VALIDATE;
             break;
         case REJECTED:
@@ -581,6 +585,29 @@ S2N_RESULT s2n_handle_crl_for_cert_callback_result(struct s2n_x509_validator *va
             validator->state = AWAITING_CRL_CALLBACK;
             RESULT_BAIL(S2N_ERR_ASYNC_BLOCKED);
     }
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_load_crls_from_contexts(struct s2n_x509_validator *validator) {
+    DEFER_CLEANUP(STACK_OF(X509_CRL) *crl_stack = sk_X509_CRL_new_null(), sk_X509_CRL_free_pointer);
+
+    uint32_t num_contexts = 0;
+    RESULT_GUARD(s2n_array_num_elements(validator->crl_for_cert_contexts, &num_contexts));
+    for (uint32_t i = 0; i < num_contexts; i++) {
+        struct s2n_crl_for_cert_context *context = NULL;
+        RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, ( void ** ) &context));
+
+        RESULT_ENSURE_REF(context);
+        RESULT_ENSURE_REF(context->crl.crl);
+
+        if (!sk_X509_CRL_push(crl_stack, context->crl.crl)) {
+            RESULT_BAIL(S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
+        }
+    }
+
+    X509_STORE_CTX_set0_crls(validator->store_ctx, crl_stack);
+    ZERO_TO_DISABLE_DEFER_CLEANUP(crl_stack);
+
     return S2N_RESULT_OK;
 }
 
