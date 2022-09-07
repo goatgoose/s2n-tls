@@ -37,7 +37,6 @@ DEFINE_POINTER_CLEANUP_FUNC(OCSP_BASICRESP*, OCSP_BASICRESP_free);
 #endif
 
 DEFINE_POINTER_CLEANUP_FUNC(struct s2n_crl_for_cert_context*, s2n_crl_for_cert_context_free);
-DEFINE_POINTER_CLEANUP_FUNC(STACK_OF(X509_CRL)*, sk_X509_CRL_free);
 
 #ifndef X509_V_FLAG_PARTIAL_CHAIN
 #define X509_V_FLAG_PARTIAL_CHAIN 0x80000
@@ -165,6 +164,7 @@ int s2n_x509_validator_init_no_x509_validation(struct s2n_x509_validator *valida
     validator->max_chain_depth = DEFAULT_MAX_CHAIN_DEPTH;
     validator->state = INIT;
     validator->cert_chain_from_wire = sk_X509_new_null();
+    validator->crl_stack = sk_X509_CRL_new_null();
     validator->crl_for_cert_contexts = NULL;
 
     return 0;
@@ -182,6 +182,7 @@ int s2n_x509_validator_init(struct s2n_x509_validator *validator, struct s2n_x50
         POSIX_ENSURE_REF(validator->store_ctx);
     }
     validator->cert_chain_from_wire = sk_X509_new_null();
+    validator->crl_stack = sk_X509_CRL_new_null();
     validator->state = INIT;
     validator->crl_for_cert_contexts = NULL;
 
@@ -194,6 +195,12 @@ static inline void wipe_cert_chain(STACK_OF(X509) *cert_chain) {
     }
 }
 
+static inline void wipe_crl_stack(STACK_OF(X509_CRL) *crl_stack) {
+    if (crl_stack) {
+        sk_X509_CRL_free(crl_stack);
+    }
+}
+
 int s2n_x509_validator_wipe(struct s2n_x509_validator *validator) {
     if (validator->store_ctx) {
         X509_STORE_CTX_free(validator->store_ctx);
@@ -201,6 +208,8 @@ int s2n_x509_validator_wipe(struct s2n_x509_validator *validator) {
     }
     wipe_cert_chain(validator->cert_chain_from_wire);
     validator->cert_chain_from_wire = NULL;
+    wipe_crl_stack(validator->crl_stack);
+    validator->crl_stack = NULL;
     validator->trust_store = NULL;
     validator->skip_cert_validation = 0;
     validator->state = UNINIT;
@@ -595,8 +604,6 @@ S2N_RESULT s2n_handle_crl_for_cert_callback_result(struct s2n_x509_validator *va
 }
 
 S2N_RESULT s2n_load_crls_from_contexts(struct s2n_x509_validator *validator) {
-    DEFER_CLEANUP(STACK_OF(X509_CRL) *crl_stack = sk_X509_CRL_new_null(), sk_X509_CRL_free_pointer);
-
     uint32_t num_contexts = 0;
     RESULT_GUARD(s2n_array_num_elements(validator->crl_for_cert_contexts, &num_contexts));
     for (uint32_t i = 0; i < num_contexts; i++) {
@@ -606,13 +613,12 @@ S2N_RESULT s2n_load_crls_from_contexts(struct s2n_x509_validator *validator) {
         RESULT_ENSURE_REF(context);
         RESULT_ENSURE_REF(context->crl.crl);
 
-        if (!sk_X509_CRL_push(crl_stack, context->crl.crl)) {
+        if (!sk_X509_CRL_push(validator->crl_stack, context->crl.crl)) {
             RESULT_BAIL(S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
         }
     }
 
-    X509_STORE_CTX_set0_crls(validator->store_ctx, crl_stack);
-    ZERO_TO_DISABLE_DEFER_CLEANUP(crl_stack);
+    X509_STORE_CTX_set0_crls(validator->store_ctx, validator->crl_stack);
 
     return S2N_RESULT_OK;
 }
