@@ -524,8 +524,6 @@ S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_i
     RESULT_GUARD_POSIX(s2n_stuffer_init(&cert_chain_in_stuffer, &cert_chain_blob));
     RESULT_GUARD_POSIX(s2n_stuffer_write(&cert_chain_in_stuffer, &cert_chain_blob));
 
-    X509 *server_cert = NULL;
-
     uint32_t certificate_size = 0;
 
     RESULT_GUARD_POSIX(s2n_stuffer_read_uint24(&cert_chain_in_stuffer, &certificate_size));
@@ -536,12 +534,6 @@ S2N_RESULT s2n_read_leaf_info(struct s2n_connection *conn, uint8_t *cert_chain_i
     asn1cert.size = certificate_size;
     asn1cert.data = s2n_stuffer_raw_read(&cert_chain_in_stuffer, certificate_size);
     RESULT_ENSURE_REF(asn1cert.data);
-
-    const uint8_t *data = asn1cert.data;
-
-    /* the cert is der encoded, just convert it. */
-    server_cert = d2i_X509(NULL, &data, asn1cert.size);
-    RESULT_ENSURE_REF(server_cert);
 
     RESULT_ENSURE(s2n_asn1der_to_public_key_and_type(public_key, pkey_type, &asn1cert) == 0,
                   S2N_ERR_CERT_UNTRUSTED);
