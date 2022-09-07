@@ -374,6 +374,21 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
             switch (ossl_error) {
                 case X509_V_ERR_CERT_HAS_EXPIRED:
                     RESULT_BAIL(S2N_ERR_CERT_EXPIRED);
+                case X509_V_ERR_CERT_REVOKED:
+                    RESULT_BAIL(S2N_ERR_CERT_REVOKED);
+                case X509_V_ERR_UNABLE_TO_GET_CRL:
+                case X509_V_ERR_DIFFERENT_CRL_SCOPE:
+                    RESULT_BAIL(S2N_ERR_CRL_NOT_FOUND);
+                case X509_V_ERR_CRL_SIGNATURE_FAILURE:
+                    RESULT_BAIL(S2N_ERR_CRL_SIGNATURE);
+                case X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD:
+                    RESULT_BAIL(S2N_ERR_CRL_THIS_UPDATE_FIELD);
+                case X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD:
+                    RESULT_BAIL(S2N_ERR_CRL_NEXT_UPDATE_FIELD);
+                case X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER:
+                    RESULT_BAIL(S2N_ERR_CRL_ISSUER);
+                case X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION:
+                    RESULT_BAIL(S2N_ERR_CRL_UNHANDLED_CRITICAL_EXTENSION);
                 default:
                     RESULT_BAIL(S2N_ERR_CERT_UNTRUSTED);
             }
