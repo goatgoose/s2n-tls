@@ -778,12 +778,14 @@ int s2n_crl_for_cert_context_free(struct s2n_crl_for_cert_context *context) {
 }
 
 int s2n_x509_cert_set_cert(struct s2n_x509_cert *cert, X509 *ossl_cert) {
+    POSIX_ENSURE_REF(cert);
     POSIX_ENSURE_REF(ossl_cert);
     cert->cert = ossl_cert;
     return S2N_SUCCESS;
 }
 
 int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert) {
+    POSIX_ENSURE_REF(cert);
     POSIX_ENSURE_REF(cert->cert);
     *ossl_cert = cert->cert;
     return S2N_SUCCESS;
@@ -796,8 +798,32 @@ int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
 }
 
 int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl) {
+    POSIX_ENSURE_REF(crl);
     POSIX_ENSURE_REF(crl->crl);
     *ossl_crl = crl->crl;
+    return S2N_SUCCESS;
+}
+
+int s2n_x509_crl_from_pem(struct s2n_x509_crl *crl, char *pem) {
+    POSIX_ENSURE_REF(crl);
+
+    DEFER_CLEANUP(struct s2n_stuffer pem_in_stuffer = {0}, s2n_stuffer_free);
+    DEFER_CLEANUP(struct s2n_stuffer der_out_stuffer = {0}, s2n_stuffer_free);
+
+    POSIX_GUARD(s2n_stuffer_alloc_ro_from_string(&pem_in_stuffer, pem));
+    POSIX_GUARD(s2n_stuffer_growable_alloc(&der_out_stuffer, 2048));
+
+    DEFER_CLEANUP(struct s2n_blob crl_blob = { 0 }, s2n_free);
+
+    POSIX_GUARD(s2n_stuffer_crl_from_pem(&pem_in_stuffer, &der_out_stuffer));
+    POSIX_GUARD(s2n_alloc(&crl_blob, s2n_stuffer_data_available(&der_out_stuffer)));
+    POSIX_GUARD(s2n_stuffer_read(&der_out_stuffer, &crl_blob));
+
+    const uint8_t *data = crl_blob.data;
+    crl->crl = d2i_X509_CRL(NULL, &data, crl_blob.size);
+
+    POSIX_ENSURE_REF(crl->crl);
+
     return S2N_SUCCESS;
 }
 

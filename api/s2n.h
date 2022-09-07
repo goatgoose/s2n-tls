@@ -942,6 +942,8 @@ int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl);
 
 int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl);
 
+int s2n_x509_crl_from_pem(struct s2n_x509_crl *crl, char *pem);
+
 struct s2n_crl_for_cert_context;
 
 typedef uint8_t (*s2n_crl_for_cert_fn) (struct s2n_crl_for_cert_context *s2n_crl_context, void *data);

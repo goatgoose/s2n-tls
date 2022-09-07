@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <openssl/err.h>
 
 #include "error/s2n_errno.h"
 
@@ -74,18 +75,6 @@ int s2n_read_test_pem_and_len(const char *pem_path, uint8_t *pem_out, uint32_t *
     fclose(pem_file);
 
     return 0;
-}
-
-int s2n_read_test_crl(const char *pem_path, struct s2n_x509_crl *crl, long int max_size) {
-    uint32_t pem_len = 0;
-    DEFER_CLEANUP(uint8_t *crl_pem = NULL, free_uint8_array_pointer);
-    POSIX_ENSURE_REF(crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE));
-    s2n_read_test_pem_and_len(pem_path, crl_pem, &pem_len, S2N_MAX_TEST_PEM_SIZE);
-
-    d2i_X509_CRL(&crl->crl, (const unsigned char **) &crl_pem, pem_len);
-    POSIX_ENSURE_REF(crl->crl);
-
-    return S2N_SUCCESS;
 }
 
 int free_char_array_pointer(char** array) {
