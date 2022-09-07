@@ -417,8 +417,7 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
 S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_connection *conn) {
     RESULT_ENSURE_REF(validator->store_ctx);
 
-    STACK_OF(X509) *chain = X509_STORE_CTX_get0_untrusted(validator->store_ctx);
-    int cert_count = sk_X509_num(chain);
+    int cert_count = sk_X509_num(validator->cert_chain_from_wire);
 
     DEFER_CLEANUP(struct s2n_array *crl_for_cert_contexts = s2n_array_new(sizeof(struct s2n_crl_for_cert_context)),
             s2n_array_free_p);
@@ -430,7 +429,7 @@ S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_conne
 
         RESULT_GUARD(s2n_crl_for_cert_context_init(context));
 
-        X509 *cert = sk_X509_value(chain, i);
+        X509 *cert = sk_X509_value(validator->cert_chain_from_wire, i);
         RESULT_ENSURE_REF(cert);
         struct s2n_x509_cert s2n_cert;
         RESULT_GUARD_POSIX(s2n_x509_cert_set_cert(&s2n_cert, cert));
