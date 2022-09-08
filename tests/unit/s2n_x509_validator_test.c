@@ -1662,13 +1662,13 @@ int main(int argc, char **argv) {
         DEFER_CLEANUP(char *root_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
         EXPECT_NOT_NULL(root_crl_pem);
         EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CRL, root_crl_pem, S2N_MAX_TEST_PEM_SIZE));
-        struct s2n_x509_crl root_crl = { 0 };
+        DEFER_CLEANUP(struct s2n_x509_crl root_crl = { 0 }, s2n_x509_crl_free);
         EXPECT_SUCCESS(s2n_x509_crl_from_pem(&root_crl, root_crl_pem));
 
         DEFER_CLEANUP(char *intermediate_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
         EXPECT_NOT_NULL(intermediate_crl_pem);
         EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE_CRL, intermediate_crl_pem, S2N_MAX_TEST_PEM_SIZE));
-        struct s2n_x509_crl intermediate_crl = { 0 };
+        DEFER_CLEANUP(struct s2n_x509_crl intermediate_crl = { 0 }, s2n_x509_crl_free);
         EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate_crl, intermediate_crl_pem));
 
         /* CRL validation succeeds for unrevoked certificate chain */

@@ -830,6 +830,13 @@ int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert) {
     return S2N_SUCCESS;
 }
 
+int s2n_x509_cert_free(struct s2n_x509_cert *cert) {
+    if (cert && cert->cert) {
+        X509_free(cert->cert);
+    }
+    return S2N_SUCCESS;
+}
+
 int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl) {
     POSIX_ENSURE_REF(ossl_crl);
     crl->crl = ossl_crl;
@@ -863,6 +870,13 @@ int s2n_x509_crl_from_pem(struct s2n_x509_crl *crl, char *pem) {
 
     POSIX_ENSURE_REF(crl->crl);
 
+    return S2N_SUCCESS;
+}
+
+int s2n_x509_crl_free(struct s2n_x509_crl *crl) {
+    if (crl && crl->crl) {
+        X509_CRL_free(crl->crl);
+    }
     return S2N_SUCCESS;
 }
 

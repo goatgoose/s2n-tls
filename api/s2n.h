@@ -936,6 +936,8 @@ int s2n_x509_cert_set_cert(struct s2n_x509_cert *cert, X509 *ossl_cert);
 
 int s2n_x509_cert_get_cert(struct s2n_x509_cert *cert, X509 **ossl_cert);
 
+int s2n_x509_cert_free(struct s2n_x509_cert *cert);
+
 struct s2n_x509_crl;
 
 int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl);
@@ -943,6 +945,8 @@ int s2n_x509_crl_set_crl(struct s2n_x509_crl *crl, X509_CRL *ossl_crl);
 int s2n_x509_crl_get_crl(struct s2n_x509_crl *crl, X509_CRL **ossl_crl);
 
 int s2n_x509_crl_from_pem(struct s2n_x509_crl *crl, char *pem);
+
+int s2n_x509_crl_free(struct s2n_x509_crl *crl);
 
 struct s2n_crl_for_cert_context;
 
