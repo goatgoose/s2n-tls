@@ -1686,9 +1686,6 @@ int main(int argc, char **argv) {
             EXPECT_NOT_NULL(config);
             EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(config, crl_for_cert_accept_everything, &data));
 
-            DEFER_CLEANUP(struct s2n_array *crls = s2n_array_new(sizeof(struct s2n_x509_crl)), s2n_array_free_p);
-            EXPECT_NOT_NULL(crls);
-
             DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
             EXPECT_NOT_NULL(connection);
             EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
