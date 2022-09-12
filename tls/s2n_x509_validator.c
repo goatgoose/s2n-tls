@@ -37,7 +37,6 @@ DEFINE_POINTER_CLEANUP_FUNC(OCSP_BASICRESP*, OCSP_BASICRESP_free);
 #endif
 
 DEFINE_POINTER_CLEANUP_FUNC(struct s2n_crl_for_cert_context*, s2n_crl_for_cert_context_free);
-DEFINE_POINTER_CLEANUP_FUNC(X509_STORE_CTX*, X509_STORE_CTX_free);
 
 #ifndef X509_V_FLAG_PARTIAL_CHAIN
 #define X509_V_FLAG_PARTIAL_CHAIN 0x80000
@@ -427,31 +426,9 @@ S2N_RESULT s2n_x509_validator_validate_cert_chain(struct s2n_x509_validator *val
 S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_connection *conn) {
     RESULT_ENSURE_REF(validator->store_ctx);
 
-    /**
-     * Call X509_verify_cert on a temporary X509_STORE_CTX to build a certificate chain from the
-     * received certificates. This ensures the CRL callback isn't triggered with extraneous
-     * certificates. Actual certificate chain verification will be performed later, so the verify
-     * function is set to a no-op for performance.
-     *
-     *= https://tools.ietf.org/rfc/rfc8446#4.4.2
-     *# For maximum compatibility, all implementations SHOULD be prepared to handle
-     *# potentially extraneous certificates and arbitrary orderings from any
-     *# TLS version, with the exception of the end-entity certificate which
-     *# MUST be first.
-     **/
-    DEFER_CLEANUP(X509_STORE_CTX *ctx = X509_STORE_CTX_new(), X509_STORE_CTX_free_pointer);
-    X509 *leaf = sk_X509_value(validator->cert_chain_from_wire, 0);
-    RESULT_ENSURE_REF(leaf);
-    RESULT_GUARD_OSSL(X509_STORE_CTX_init(ctx, validator->trust_store->trust_store, leaf,
-            validator->cert_chain_from_wire), S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
-    X509_STORE_CTX_set_verify(ctx, ossl_verify_noop);
-    RESULT_ENSURE(X509_verify_cert(ctx) >= 0, S2N_ERR_CERT_UNTRUSTED);
-
-    STACK_OF(X509) *cert_chain = X509_STORE_CTX_get0_chain(ctx);
+    STACK_OF(X509) *cert_chain = validator->cert_chain_from_wire;
     RESULT_ENSURE_REF(cert_chain);
     int cert_count = sk_X509_num(cert_chain);
-    /* Do not trigger a CRL callback for the root certificate, which does not have a CRL */
-    cert_count -= 1;
 
     DEFER_CLEANUP(struct s2n_array *crl_for_cert_contexts = s2n_array_new(sizeof(struct s2n_crl_for_cert_context)),
             s2n_array_free_p);
