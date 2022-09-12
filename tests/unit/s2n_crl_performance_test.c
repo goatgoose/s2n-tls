@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     DEFER_CLEANUP(struct s2n_x509_crl intermediate_crl = { 0 }, s2n_x509_crl_free);
     EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate_crl, intermediate_crl_pem));
 
-    {
+    for (int i = 0; i < 100; ++i) {
         struct s2n_cert_chain_and_key *chain_and_key;
         EXPECT_SUCCESS(s2n_test_cert_chain_and_key_new(&chain_and_key,
                 S2N_CRL_NONE_REVOKED_CERT_CHAIN, S2N_CRL_NONE_REVOKED_KEY));
