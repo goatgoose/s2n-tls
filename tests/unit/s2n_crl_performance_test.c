@@ -41,13 +41,13 @@ static int try_handshake(struct s2n_connection *server_conn, struct s2n_connecti
 }
 
 struct crl_for_cert_data {
-    struct s2n_x509_crl crls[2];
+    struct s2n_x509_crl crls[10];
 };
 
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
     struct crl_for_cert_data *crl_data = (struct crl_for_cert_data*) data;
 
-    struct s2n_x509_crl crl = { 0 };
+    struct s2n_x509_crl crl = crl_data->crls[s2n_crl_context->cert_idx];
     s2n_crl_for_cert_accept(s2n_crl_context, &crl);
     return 0;
 }
@@ -57,16 +57,38 @@ int main(int argc, char **argv)
     BEGIN_TEST();
 
     DEFER_CLEANUP(char *root_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
-    EXPECT_NOT_NULL(root_crl_pem);
     EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CRL, root_crl_pem, S2N_MAX_TEST_PEM_SIZE));
     DEFER_CLEANUP(struct s2n_x509_crl root_crl = { 0 }, s2n_x509_crl_free);
     EXPECT_SUCCESS(s2n_x509_crl_from_pem(&root_crl, root_crl_pem));
 
-    DEFER_CLEANUP(char *intermediate_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
-    EXPECT_NOT_NULL(intermediate_crl_pem);
-    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE_CRL, intermediate_crl_pem, S2N_MAX_TEST_PEM_SIZE));
-    DEFER_CLEANUP(struct s2n_x509_crl intermediate_crl = { 0 }, s2n_x509_crl_free);
-    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate_crl, intermediate_crl_pem));
+    DEFER_CLEANUP(char *intermediate2_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE2_CRL, intermediate2_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+    DEFER_CLEANUP(struct s2n_x509_crl intermediate2_crl = { 0 }, s2n_x509_crl_free);
+    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate2_crl, intermediate2_crl_pem));
+
+    DEFER_CLEANUP(char *intermediate3_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE3_CRL, intermediate3_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+    DEFER_CLEANUP(struct s2n_x509_crl intermediate3_crl = { 0 }, s2n_x509_crl_free);
+    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate3_crl, intermediate3_crl_pem));
+
+    DEFER_CLEANUP(char *intermediate4_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE4_CRL, intermediate4_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+    DEFER_CLEANUP(struct s2n_x509_crl intermediate4_crl = { 0 }, s2n_x509_crl_free);
+    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate4_crl, intermediate4_crl_pem));
+
+    DEFER_CLEANUP(char *intermediate5_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE5_CRL, intermediate5_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+    DEFER_CLEANUP(struct s2n_x509_crl intermediate5_crl = { 0 }, s2n_x509_crl_free);
+    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate5_crl, intermediate5_crl_pem));
+
+    DEFER_CLEANUP(char *intermediate6_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
+    EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_INTERMEDIATE6_CRL, intermediate6_crl_pem, S2N_MAX_TEST_PEM_SIZE));
+    DEFER_CLEANUP(struct s2n_x509_crl intermediate6_crl = { 0 }, s2n_x509_crl_free);
+    EXPECT_SUCCESS(s2n_x509_crl_from_pem(&intermediate6_crl, intermediate6_crl_pem));
+
+    struct crl_for_cert_data data = { 0 };
+    data.crls[0] = intermediate2_crl;
+    data.crls[1] = root_crl;
 
     for (int i = 0; i < 100; ++i) {
         struct s2n_cert_chain_and_key *chain_and_key;
@@ -82,7 +104,7 @@ int main(int argc, char **argv)
         EXPECT_NOT_NULL(client_config = s2n_config_new());
         EXPECT_SUCCESS(s2n_config_set_verification_ca_location(client_config, S2N_CRL_ROOT_CERT, NULL));
 
-        EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(client_config, crl_for_cert_accept_everything, NULL));
+        EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(client_config, crl_for_cert_accept_everything, &data));
 
         /* Create connection */
         struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT);
@@ -102,7 +124,7 @@ int main(int argc, char **argv)
         EXPECT_SUCCESS(s2n_connection_set_io_pair(client_conn, &io_pair));
         EXPECT_SUCCESS(s2n_connection_set_io_pair(server_conn, &io_pair));
 
-        EXPECT_FAILURE_WITH_ERRNO(try_handshake(server_conn, client_conn), S2N_ERR_CRL_NOT_FOUND);
+        EXPECT_SUCCESS(try_handshake(server_conn, client_conn));
 
         /* Free the data */
         EXPECT_SUCCESS(s2n_connection_free(server_conn));
