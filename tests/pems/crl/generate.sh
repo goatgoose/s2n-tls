@@ -250,6 +250,12 @@ revoke_cert root/intermediate root/intermediate/leaf_revoked
 generate_crl root/intermediate_revoked
 revoke_cert root/intermediate_revoked root/intermediate/leaf_revoked
 
+generate_crl root/intermediate2
+generate_crl root/intermediate3
+generate_crl root/intermediate4
+generate_crl root/intermediate5
+generate_crl root/intermediate6
+
 # Ensure openssl verify reads generated CRLs and properly rejects certificates
 verify_cert root/chain.pem root/intermediate/cert.pem root/crl.pem 0
 verify_cert root/chain.pem root/intermediate_revoked/cert.pem root/crl.pem 1
@@ -316,6 +322,12 @@ cp root/leaf2/key.pem "${install_dir}/small_key.pem"
 cp root/crl.pem "${install_dir}/root_crl.pem"
 cp root/intermediate/crl.pem "${install_dir}/intermediate_crl.pem"
 cp root/intermediate_revoked/crl.pem "${install_dir}/intermediate_revoked_crl.pem"
+
+cp root/intermediate2/crl.pem "${install_dir}/intermediate2_crl.pem"
+cp root/intermediate3/crl.pem "${install_dir}/intermediate3_crl.pem"
+cp root/intermediate4/crl.pem "${install_dir}/intermediate4_crl.pem"
+cp root/intermediate5/crl.pem "${install_dir}/intermediate5_crl.pem"
+cp root/intermediate6/crl.pem "${install_dir}/intermediate6_crl.pem"
 
 popd || exit
 
