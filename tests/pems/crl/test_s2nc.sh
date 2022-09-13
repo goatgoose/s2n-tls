@@ -18,9 +18,11 @@
 s2nc_path="../../../bin/s2nc"
 s2nd_path="../../../bin/s2nd"
 
-cert_chains=("none_revoked" "leaf_revoked" "intermediate_revoked" "all_revoked")
+cert_chains=("none_revoked" "leaf_revoked" "intermediate_revoked" "all_revoked" "large")
 
 for cert_chain in "${cert_chains[@]}"; do
+  echo "Testing: ${cert_chain}"
+
   "${s2nd_path}" \
       --self-service-blinding \
       --negotiate \

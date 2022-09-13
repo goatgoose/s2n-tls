@@ -613,9 +613,9 @@ S2N_RESULT s2n_load_crls_from_contexts(struct s2n_x509_validator *validator) {
         RESULT_GUARD(s2n_array_get(validator->crl_for_cert_contexts, i, ( void ** ) &context));
 
         RESULT_ENSURE_REF(context);
-        RESULT_ENSURE_REF(context->crl.crl);
+        //RESULT_ENSURE_REF(context->crl.crl);
 
-        if (!sk_X509_CRL_push(validator->crl_stack, context->crl.crl)) {
+        if (context->crl.crl && !sk_X509_CRL_push(validator->crl_stack, context->crl.crl)) {
             RESULT_BAIL(S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
         }
     }

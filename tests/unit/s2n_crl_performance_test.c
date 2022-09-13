@@ -47,7 +47,7 @@ struct crl_for_cert_data {
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
     struct crl_for_cert_data *crl_data = (struct crl_for_cert_data*) data;
 
-    struct s2n_x509_crl crl = crl_data->crls[s2n_crl_context->cert_idx];
+    struct s2n_x509_crl crl = { 0 };
     s2n_crl_for_cert_accept(s2n_crl_context, &crl);
     return 0;
 }
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 100; ++i) {
         struct s2n_cert_chain_and_key *chain_and_key;
         EXPECT_SUCCESS(s2n_test_cert_chain_and_key_new(&chain_and_key,
-                S2N_CRL_NONE_REVOKED_CERT_CHAIN, S2N_CRL_NONE_REVOKED_KEY));
+                S2N_CRL_LARGE_CERT_CHAIN, S2N_CRL_LARGE_KEY));
 
         struct s2n_config *server_config, *client_config;
         EXPECT_NOT_NULL(server_config = s2n_config_new());
@@ -82,21 +82,19 @@ int main(int argc, char **argv)
         EXPECT_NOT_NULL(client_config = s2n_config_new());
         EXPECT_SUCCESS(s2n_config_set_verification_ca_location(client_config, S2N_CRL_ROOT_CERT, NULL));
 
-        struct crl_for_cert_data data = { 0 };
-        data.crls[0] = root_crl;
-        data.crls[1] = intermediate_crl;
-
-        EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(client_config, crl_for_cert_accept_everything, &data));
+        EXPECT_SUCCESS(s2n_config_set_crl_for_cert_callback(client_config, crl_for_cert_accept_everything, NULL));
 
         /* Create connection */
         struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT);
         EXPECT_NOT_NULL(client_conn);
         EXPECT_SUCCESS(s2n_connection_set_config(client_conn, client_config));
         EXPECT_SUCCESS(s2n_set_server_name(client_conn, "localhost"));
+        EXPECT_SUCCESS(s2n_connection_set_blinding(client_conn, S2N_SELF_SERVICE_BLINDING));
 
         struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER);
         EXPECT_NOT_NULL(server_conn);
         EXPECT_SUCCESS(s2n_connection_set_config(server_conn, server_config));
+        EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
 
         /* Create nonblocking pipes */
         struct s2n_test_io_pair io_pair;
@@ -104,7 +102,7 @@ int main(int argc, char **argv)
         EXPECT_SUCCESS(s2n_connection_set_io_pair(client_conn, &io_pair));
         EXPECT_SUCCESS(s2n_connection_set_io_pair(server_conn, &io_pair));
 
-        EXPECT_SUCCESS(try_handshake(server_conn, client_conn));
+        EXPECT_FAILURE_WITH_ERRNO(try_handshake(server_conn, client_conn), S2N_ERR_CRL_NOT_FOUND);
 
         /* Free the data */
         EXPECT_SUCCESS(s2n_connection_free(server_conn));

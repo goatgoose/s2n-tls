@@ -55,7 +55,7 @@ generate_key_cert() {
 
   pushd "${path}" || exit
 
-  openssl genrsa -out key.pem 4096 || exit
+  openssl genrsa -out key.pem 1024 || exit
   chmod 400 key.pem
 
   ca_dir="." \
@@ -186,6 +186,30 @@ pushd "${base_dir}" || exit
 init_ca_dir root
 generate_key_cert root ca
 
+init_ca_dir root/intermediate2
+generate_key_cert root/intermediate2 intermediate
+sign_cert root root/intermediate2 ca
+
+init_ca_dir root/intermediate3
+generate_key_cert root/intermediate3 intermediate
+sign_cert root/intermediate2 root/intermediate3 ca
+
+init_ca_dir root/intermediate4
+generate_key_cert root/intermediate4 intermediate
+sign_cert root/intermediate3 root/intermediate4 ca
+
+init_ca_dir root/intermediate5
+generate_key_cert root/intermediate5 intermediate
+sign_cert root/intermediate4 root/intermediate5 ca
+
+init_ca_dir root/intermediate6
+generate_key_cert root/intermediate6 intermediate
+sign_cert root/intermediate5 root/intermediate6 ca
+
+mkdir root/leaf7
+generate_key_cert root/leaf7 leaf
+sign_cert root/intermediate6 root/leaf7 intermediate
+
 # Generate intermediate certificates
 init_ca_dir root/intermediate
 generate_key_cert root/intermediate intermediate
@@ -270,6 +294,15 @@ cat root/intermediate_revoked/leaf_revoked/cert.pem \
     root/intermediate_revoked/cert.pem \
     > "${install_dir}/all_revoked_cert_chain.pem"
 cp root/intermediate_revoked/leaf_revoked/key.pem "${install_dir}/all_revoked_key.pem"
+
+cat root/leaf7/cert.pem \
+    root/intermediate6/cert.pem \
+    root/intermediate5/cert.pem \
+    root/intermediate4/cert.pem \
+    root/intermediate3/cert.pem \
+    root/intermediate2/cert.pem \
+    > "${install_dir}/large_cert_chain.pem"
+cp root/leaf7/key.pem "${install_dir}/large_key.pem"
 
 cp root/crl.pem "${install_dir}/root_crl.pem"
 cp root/intermediate/crl.pem "${install_dir}/intermediate_crl.pem"
