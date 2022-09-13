@@ -444,7 +444,12 @@ S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_conne
     RESULT_ENSURE_REF(leaf);
     RESULT_GUARD_OSSL(X509_STORE_CTX_init(ctx, validator->trust_store->trust_store, leaf,
             validator->cert_chain_from_wire), S2N_ERR_INTERNAL_LIBCRYPTO_ERROR);
+
+#if S2N_OPENSSL_VERSION_AT_LEAST(1, 1, 0)
     X509_STORE_CTX_set_verify(ctx, ossl_verify_noop);
+#else
+    X509_STORE_set_verify_func(ctx, ossl_verify_noop);
+#endif
     RESULT_ENSURE(X509_verify_cert(ctx) >= 0, S2N_ERR_CERT_UNTRUSTED);
 
     STACK_OF(X509) *cert_chain = X509_STORE_CTX_get0_chain(ctx);
