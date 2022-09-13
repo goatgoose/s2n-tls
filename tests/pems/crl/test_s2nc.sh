@@ -18,7 +18,7 @@
 s2nc_path="../../../bin/s2nc"
 s2nd_path="../../../bin/s2nd"
 
-cert_chains=("none_revoked" "leaf_revoked" "intermediate_revoked" "all_revoked" "large")
+cert_chains=("none_revoked" "leaf_revoked" "intermediate_revoked" "all_revoked" "large" "small")
 
 for cert_chain in "${cert_chains[@]}"; do
   echo "Testing: ${cert_chain}"

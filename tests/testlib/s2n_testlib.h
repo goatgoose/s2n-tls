@@ -183,6 +183,8 @@ S2N_RESULT s2n_connection_set_test_master_secret(struct s2n_connection *conn, co
 #define S2N_CRL_INTERMEDIATE_INVALID_NEXT_UPDATE_CRL    "../pems/crl/intermediate_invalid_next_update_crl.pem"
 #define S2N_CRL_LARGE_CERT_CHAIN                        "../pems/crl/large_cert_chain.pem"
 #define S2N_CRL_LARGE_KEY                               "../pems/crl/large_key.pem"
+#define S2N_CRL_SMALL_CERT_CHAIN                        "../pems/crl/small_cert_chain.pem"
+#define S2N_CRL_SMALL_KEY                               "../pems/crl/small_key.pem"
 
 /* Read a cert given a path into pem_out */
 int s2n_read_test_pem(const char *pem_path, char *pem_out, long int max_size);

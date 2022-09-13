@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 100; ++i) {
         struct s2n_cert_chain_and_key *chain_and_key;
         EXPECT_SUCCESS(s2n_test_cert_chain_and_key_new(&chain_and_key,
-                S2N_CRL_LARGE_CERT_CHAIN, S2N_CRL_LARGE_KEY));
+                S2N_CRL_SMALL_CERT_CHAIN, S2N_CRL_SMALL_KEY));
 
         struct s2n_config *server_config, *client_config;
         EXPECT_NOT_NULL(server_config = s2n_config_new());

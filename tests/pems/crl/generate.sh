@@ -190,6 +190,10 @@ init_ca_dir root/intermediate2
 generate_key_cert root/intermediate2 intermediate
 sign_cert root root/intermediate2 ca
 
+mkdir root/leaf2
+generate_key_cert root/leaf2 leaf
+sign_cert root/intermediate2 root/leaf2 intermediate
+
 init_ca_dir root/intermediate3
 generate_key_cert root/intermediate3 intermediate
 sign_cert root/intermediate2 root/intermediate3 ca
@@ -303,6 +307,11 @@ cat root/leaf7/cert.pem \
     root/intermediate2/cert.pem \
     > "${install_dir}/large_cert_chain.pem"
 cp root/leaf7/key.pem "${install_dir}/large_key.pem"
+
+cat root/leaf2/cert.pem \
+    root/intermediate2/cert.pem \
+    > "${install_dir}/small_cert_chain.pem"
+cp root/leaf2/key.pem "${install_dir}/small_key.pem"
 
 cp root/crl.pem "${install_dir}/root_crl.pem"
 cp root/intermediate/crl.pem "${install_dir}/intermediate_crl.pem"
