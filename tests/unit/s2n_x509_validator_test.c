@@ -116,6 +116,9 @@ struct crl_for_cert_data {
 };
 
 static uint8_t crl_for_cert_accept_everything(struct s2n_crl_for_cert_context *s2n_crl_context, void *data) {
+    unsigned long issuer_hash = X509_issuer_name_hash(s2n_crl_context->cert.cert);
+    printf("issuer hash: %lu\n", issuer_hash);
+
     struct crl_for_cert_data *crl_data = (struct crl_for_cert_data*) data;
 
     struct s2n_x509_crl crl = crl_data->crls[s2n_crl_context->cert_idx];
@@ -1658,6 +1661,10 @@ int main(int argc, char **argv) {
         EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CRL, root_crl_pem, S2N_MAX_TEST_PEM_SIZE));
         DEFER_CLEANUP(struct s2n_x509_crl root_crl = { 0 }, s2n_x509_crl_free);
         EXPECT_SUCCESS(s2n_x509_crl_from_pem(&root_crl, root_crl_pem));
+
+        X509_NAME* root_crl_name = X509_CRL_get_issuer(root_crl.crl);
+        unsigned long root_crl_name_hash = X509_NAME_hash(root_crl_name);
+        printf("root crl name hash: %lu\n", root_crl_name_hash);
 
         DEFER_CLEANUP(char *intermediate_crl_pem = malloc(S2N_MAX_TEST_PEM_SIZE), free_char_array_pointer);
         EXPECT_NOT_NULL(intermediate_crl_pem);
