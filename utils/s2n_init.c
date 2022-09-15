@@ -76,6 +76,8 @@ int s2n_init(void)
         s2n_stack_traces_enabled_set(true);
     }
 
+    X509_get_ex_new_index(sizeof(int), NULL, NULL, NULL, NULL);
+
     initialized = true;
 
     return S2N_SUCCESS;

@@ -439,6 +439,13 @@ S2N_RESULT s2n_crl_lookup(struct s2n_x509_validator *validator, struct s2n_conne
         RESULT_GUARD(s2n_crl_for_cert_context_init(context));
 
         X509 *cert = sk_X509_value(validator->cert_chain_from_wire, i);
+
+        int test_int = 1142;
+        X509_set_ex_data(cert, 0, &test_int);
+
+        int *read_int = (int *) X509_get_ex_data(cert, 0);
+        printf("read int: %d\n", *read_int);
+
         RESULT_ENSURE_REF(cert);
         struct s2n_x509_cert s2n_cert;
         RESULT_GUARD_POSIX(s2n_x509_cert_set_cert(&s2n_cert, cert));
