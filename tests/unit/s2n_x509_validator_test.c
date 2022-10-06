@@ -50,36 +50,6 @@ static int read_file(struct s2n_stuffer *file_output, const char *path, uint32_t
     return -1;
 }
 
-static uint32_t write_pem_file_to_stuffer_as_chain(struct s2n_stuffer *chain_out_stuffer, const char *pem_data, uint8_t protocol_version) {
-    struct s2n_stuffer chain_in_stuffer = {0}, cert_stuffer = {0};
-    s2n_stuffer_alloc_ro_from_string(&chain_in_stuffer, pem_data);
-    s2n_stuffer_growable_alloc(&cert_stuffer, 4096);
-    s2n_stuffer_growable_alloc(chain_out_stuffer, 4096);
-
-    uint32_t chain_size = 0;
-    do {
-        s2n_stuffer_certificate_from_pem(&chain_in_stuffer, &cert_stuffer);
-        uint32_t cert_len = s2n_stuffer_data_available(&cert_stuffer);
-        uint8_t *raw_cert_data = s2n_stuffer_raw_read(&cert_stuffer, cert_len);
-
-        if (cert_len) {
-            struct s2n_blob cert_data = {.data = raw_cert_data, .size = cert_len};
-            chain_size += cert_data.size + 3;
-            s2n_stuffer_write_uint24(chain_out_stuffer, cert_data.size);
-            s2n_stuffer_write(chain_out_stuffer, &cert_data);
-            /* Add an extra uint8_t to represent 0 length certificate extensions in tls13 */
-            if (protocol_version >= S2N_TLS13) {
-                s2n_stuffer_write_uint16(chain_out_stuffer, 0);
-                chain_size += 2;
-            }
-        }
-    } while (s2n_stuffer_data_available(&chain_in_stuffer));
-
-    s2n_stuffer_free(&cert_stuffer);
-    s2n_stuffer_free(&chain_in_stuffer);
-    return chain_size;
-}
-
 struct host_verify_data {
     const char *name;
     uint8_t found_name;
