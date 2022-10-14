@@ -35,8 +35,8 @@
 #define CRL_TEST_CHAIN_LEN 2
 
 struct crl_lookup_data {
-    struct s2n_crl *crls[CRL_TEST_CHAIN_LEN];
-    X509 *certs[CRL_TEST_CHAIN_LEN];
+    struct s2n_crl *crls[5];
+    X509 *certs[5];
     uint8_t callback_invoked_count;
 };
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
         DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
         uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
         EXPECT_TRUE(chain_len > 0);
-        uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, ( uint32_t )chain_len);
+        uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
 
         DEFER_CLEANUP(struct s2n_pkey public_key_out = { 0 }, s2n_pkey_free);
         EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
@@ -332,6 +332,56 @@ int main(int argc, char *argv[])
         EXPECT_ERROR_WITH_ERRNO(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data,
                 chain_len, &pkey_type, &public_key_out), S2N_ERR_CRL_LOOKUP_FAILED);
         EXPECT_TRUE(data.callback_invoked_count == CRL_TEST_CHAIN_LEN);
+    }
+
+    /* CRL validation succeeds for unrevoked certificate chain when extraneous certificate is rejected */
+    {
+        DEFER_CLEANUP(struct s2n_x509_trust_store trust_store = { 0 }, s2n_x509_trust_store_wipe);
+        s2n_x509_trust_store_init_empty(&trust_store);
+
+        char root_cert[S2N_MAX_TEST_PEM_SIZE] = { 0 };
+        EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_ROOT_CERT, root_cert, S2N_MAX_TEST_PEM_SIZE));
+        EXPECT_SUCCESS(s2n_x509_trust_store_add_pem(&trust_store, root_cert));
+
+        DEFER_CLEANUP(struct s2n_x509_validator validator, s2n_x509_validator_wipe);
+        EXPECT_SUCCESS(s2n_x509_validator_init(&validator, &trust_store, 0));
+
+        struct crl_lookup_data data = { 0 };
+        data.crls[0] = intermediate_crl;
+        data.crls[1] = root_crl;
+
+        /* Reject the extraneous cert */
+        data.crls[2] = NULL;
+
+        DEFER_CLEANUP(struct s2n_config *config = s2n_config_new(), s2n_config_ptr_free);
+        EXPECT_NOT_NULL(config);
+
+        config->crl_lookup = crl_lookup_test_callback;
+        config->data_for_crl_lookup = (void*) &data;
+
+        DEFER_CLEANUP(struct s2n_connection *connection = s2n_connection_new(S2N_CLIENT), s2n_connection_ptr_free);
+        EXPECT_NOT_NULL(connection);
+        EXPECT_SUCCESS(s2n_connection_set_config(connection, config));
+        EXPECT_SUCCESS(s2n_set_server_name(connection, "localhost"));
+
+        uint8_t cert_chain_pem[S2N_MAX_TEST_PEM_SIZE * 2];
+        EXPECT_SUCCESS(s2n_read_test_pem(S2N_CRL_NONE_REVOKED_CERT_CHAIN, (char *) cert_chain_pem, S2N_MAX_TEST_PEM_SIZE));
+
+        /* Add an arbitrary cert to the chain that won't be included in the chain of trust */
+        unsigned long cert_chain_len = strlen((const char *) cert_chain_pem);
+        EXPECT_SUCCESS(s2n_read_test_pem(S2N_RSA_2048_SHA256_CLIENT_CERT, (char *) cert_chain_pem + cert_chain_len, S2N_MAX_TEST_PEM_SIZE));
+
+        DEFER_CLEANUP(struct s2n_stuffer chain_stuffer = { 0 }, s2n_stuffer_free);
+        uint32_t chain_len = write_pem_file_to_stuffer_as_chain(&chain_stuffer, (const char *) cert_chain_pem, S2N_TLS12);
+        EXPECT_TRUE(chain_len > 0);
+        uint8_t *chain_data = s2n_stuffer_raw_read(&chain_stuffer, (uint32_t) chain_len);
+
+        DEFER_CLEANUP(struct s2n_pkey public_key_out = { 0 }, s2n_pkey_free);
+        EXPECT_SUCCESS(s2n_pkey_zero_init(&public_key_out));
+        s2n_pkey_type pkey_type = S2N_PKEY_TYPE_UNKNOWN;
+        EXPECT_OK(s2n_x509_validator_validate_cert_chain(&validator, connection, chain_data, chain_len, &pkey_type,
+                &public_key_out));
+        EXPECT_TRUE(data.callback_invoked_count == 3);
     }
 
     /* s2n_x509_validator_validate_cert_chain blocks until all CRL callbacks respond */
