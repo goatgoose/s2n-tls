@@ -502,5 +502,12 @@ int main(int argc, char *argv[])
         EXPECT_TRUE(leaf_cert_hash != root_crl_hash);
     }
 
+    {
+        X509_CRL *crl = received_lookup_data.crls[0]->crl;
+        X509 *cert = received_lookup_data.certs[0];
+        X509_REVOKED *revoked = NULL;
+        X509_CRL_get0_by_cert(crl, &revoked, cert);
+    }
+
     END_TEST();
 }
