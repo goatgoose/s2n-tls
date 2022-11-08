@@ -30,7 +30,6 @@ phases:
         fi
       - $CB_BIN_DIR/install_ubuntu_dependencies.sh
       - apt-key list
-      - add-apt-repository ppa:ubuntu-toolchain-r/test -y
       - apt-get update -o Acquire::CompressionTypes::Order::=gz
       - apt-get update -y
       - |
