@@ -108,6 +108,7 @@ failure_tests/sha_%.log : bitcode/sha_%.bc
 	cp $< bitcode/all_llvm.bc 
 	@set -o pipefail; \
 	! (saw verify_s2n_hmac_sha256.saw 2>&1 | tee $@)
+	grep "Proof failed." $@
 
 failure_tests/tls_%.log : bitcode/tls_%.bc
         #this might not be necessary
