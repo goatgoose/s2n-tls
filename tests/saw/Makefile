@@ -92,11 +92,7 @@ tmp/%.log : %.saw bitcode/all_llvm.bc tmp
 .PHONY : failure-tests
 failure-tests : bitcode
 	@${MAKE} clean-failure-logs
-	@${MAKE} failure_tests/tls_early_ccs.log
-	@${MAKE} failure_tests/tls_missing_full_handshake.log
 	@${MAKE} failure_tests/sha_bad_magic_mod.log
-	@${MAKE} failure_tests/cork_one.log
-	@${MAKE} failure_tests/cork_two.log
 
 #The bitcode files don't get deleted, in case we want to do tests on them
 .SECONDARY : $(wildcard bitcode/*.bc)
