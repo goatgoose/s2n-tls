@@ -7,20 +7,7 @@ index 29ded952..115b6fb4 100644
       * smaller number of cycles if the input is "small".
       */
 -    const uint32_t HIGHEST_32_BIT = 4294949760;
-+    const uint32_t HIGHEST_32_BIT = 4294949759;
++    const uint32_t HIGHEST_32_BIT = 4294949761;
      POSIX_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
      uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
      POSIX_GUARD(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
-diff --git a/tests/saw/HMAC/spec/HMAC.saw b/tests/saw/HMAC/spec/HMAC.saw
-index b0592e19..62bb1f42 100644
---- a/tests/saw/HMAC/spec/HMAC.saw
-+++ b/tests/saw/HMAC/spec/HMAC.saw
-@@ -355,7 +355,7 @@ let hmac_update_spec
- 
-     size <- crucible_fresh_var "size" (llvm_int 32);
-     let uint32_max = {{~0 : [32]}};
--    let highest_32_bit = {{4294949760 : [32]}};
-+    let highest_32_bit = {{4294949759 : [32]}};
-     crucible_precond {{ size <= uint32_max - highest_32_bit }};
-     crucible_precond {{ ((highest_32_bit + size) % (0 # st0.hash_block_size)) <= uint32_max - st0.currently_in_hash_block }};
- 
