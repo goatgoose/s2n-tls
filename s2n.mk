@@ -15,6 +15,8 @@ else ifeq ($(PLATFORM),FreeBSD)
     LIBS = -lthr
 else ifeq ($(PLATFORM),NetBSD)
     LIBS = -pthread
+else ifeq ($(PLATFORM),OpenBSD)
+    LIBS = -pthread -lkvm
 else
     LIBS = -pthread -ldl -lrt
 endif
@@ -250,7 +252,7 @@ endif
 CFLAGS_LLVM = ${DEFAULT_CFLAGS} -emit-llvm -c -g -O1
 
 $(BITCODE_DIR)%.bc: %.c
-	$(CLANG) $(CFLAGS_LLVM) -o $@ $< 
+	$(CLANG) $(CFLAGS_LLVM) -o $@ $<
 
 
 INDENTOPTS = -npro -kr -i4 -ts4 -nut -sob -l180 -ss -ncs -cp1
@@ -260,7 +262,7 @@ indentsource:
 	( for source in ${SOURCES} ; do ${INDENT} ${INDENTOPTS} $$source; done )
 
 .PHONY : lcov
-lcov: 
+lcov:
 	lcov --capture --directory . --gcov-tool $(COV_TOOL) --output ./coverage.info
 
 

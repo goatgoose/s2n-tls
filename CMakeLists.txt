@@ -63,8 +63,8 @@ file(GLOB PQ_SRC "pq-crypto/*.c")
 message(STATUS "Detected CMAKE_SYSTEM_PROCESSOR as ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  message(STATUS "Detected 32-Bit system - disabling PQ crypto assembly optimizations")
-  set(S2N_NO_PQ_ASM ON)
+    message(STATUS "Detected 32-Bit system - disabling PQ crypto assembly optimizations")
+    set(S2N_NO_PQ_ASM ON)
 else()
     message(STATUS "Detected 64-Bit system")
 endif()
@@ -76,12 +76,12 @@ if(S2N_NO_PQ)
 else()
     # PQ is enabled, so include all of the PQ crypto code
     file(GLOB PQ_HEADERS
-        "pq-crypto/*.h"
-        "pq-crypto/kyber_r3/*.h")
+            "pq-crypto/*.h"
+            "pq-crypto/kyber_r3/*.h")
 
     file(GLOB PQ_SRC
-        "pq-crypto/*.c"
-        "pq-crypto/kyber_r3/*.c")
+            "pq-crypto/*.c"
+            "pq-crypto/kyber_r3/*.c")
 endif()
 
 ##be nice to visual studio users
@@ -116,16 +116,16 @@ else()
     # supports it and set proper compiler flags to be added later to the
     # Kyber compilation units.
     if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^(x86_64|amd64|AMD64)$")
-    
+
         set(KYBER512R3_AVX2_BMI2_FLAGS "-mavx2 -mavx -mbmi2")
         try_compile(KYBER512R3_AVX2_BMI2_SUPPORTED
-            ${CMAKE_BINARY_DIR}
-            "${CMAKE_CURRENT_LIST_DIR}/tests/features/noop_main.c"
-            COMPILE_DEFINITIONS ${KYBER512R3_AVX2_BMI2_FLAGS})
+                ${CMAKE_BINARY_DIR}
+                "${CMAKE_CURRENT_LIST_DIR}/tests/features/noop_main.c"
+                COMPILE_DEFINITIONS ${KYBER512R3_AVX2_BMI2_FLAGS})
 
         try_compile(KYBER512R3_M256_INTRINSICS_SUPPORTED
-            ${CMAKE_BINARY_DIR}
-            "${CMAKE_CURRENT_LIST_DIR}/tests/features/m256_intrinsics.c")
+                ${CMAKE_BINARY_DIR}
+                "${CMAKE_CURRENT_LIST_DIR}/tests/features/m256_intrinsics.c")
 
         # Some platforms support -mavx2 flag but not m256 intrinsics required to use them. Only enable Kyber assembly
         # optimizations if both are supported. See https://github.com/aws/s2n-tls/pull/3005 for more info.
@@ -145,18 +145,18 @@ include(CheckCSourceCompiles)
 
 # Determine if execinfo.h is available
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-try_compile(
-        S2N_HAVE_EXECINFO
-        ${CMAKE_BINARY_DIR}
-        SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/features/execinfo.c"
-        LINK_LIBRARIES execinfo
-)
+    try_compile(
+            S2N_HAVE_EXECINFO
+            ${CMAKE_BINARY_DIR}
+            SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/features/execinfo.c"
+            LINK_LIBRARIES execinfo
+    )
 else()
-try_compile(
-        S2N_HAVE_EXECINFO
-        ${CMAKE_BINARY_DIR}
-        SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/features/execinfo.c"
-)
+    try_compile(
+            S2N_HAVE_EXECINFO
+            ${CMAKE_BINARY_DIR}
+            SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/features/execinfo.c"
+    )
 endif()
 
 # Determine if cpuid.h is available
@@ -219,6 +219,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     set(OS_LIBS thr execinfo)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
     set(OS_LIBS Threads::Threads)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    set(OS_LIBS Threads::Threads kvm)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(OS_LIBS Threads::Threads dl)
 else()
@@ -231,24 +233,24 @@ if(S2N_FIPS)
 endif()
 
 file(GLOB S2N_HEADERS
-    ${API_HEADERS}
-    ${API_UNSTABLE_HEADERS}
-    ${CRYPTO_HEADERS}
-    ${ERROR_HEADERS}
-    ${PQ_HEADERS}
-    ${STUFFER_HEADERS}
-    ${TLS_HEADERS}
-    ${UTILS_HEADERS}
-)
+        ${API_HEADERS}
+        ${API_UNSTABLE_HEADERS}
+        ${CRYPTO_HEADERS}
+        ${ERROR_HEADERS}
+        ${PQ_HEADERS}
+        ${STUFFER_HEADERS}
+        ${TLS_HEADERS}
+        ${UTILS_HEADERS}
+        )
 
 file(GLOB S2N_SRC
-    ${CRYPTO_SRC}
-    ${ERROR_SRC}
-    ${PQ_SRC}
-    ${STUFFER_SRC}
-    ${TLS_SRC}
-    ${UTILS_SRC}
-)
+        ${CRYPTO_SRC}
+        ${ERROR_SRC}
+        ${PQ_SRC}
+        ${STUFFER_SRC}
+        ${TLS_SRC}
+        ${UTILS_SRC}
+        )
 
 add_library(${PROJECT_NAME} ${S2N_HEADERS} ${S2N_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
@@ -262,7 +264,7 @@ set(CMAKE_C_FLAGS_DEBUGOPT "")
 target_compile_options(${PROJECT_NAME} PRIVATE -pedantic -std=gnu99 -Wall -Wimplicit -Wunused -Wcomment -Wchar-subscripts
         -Wuninitialized -Wshadow -Wcast-align -Wwrite-strings -Wno-deprecated-declarations -Wno-unknown-pragmas -Wformat-security
         -Wno-missing-braces -Wno-strict-prototypes -Wa,--noexecstack
-)
+        )
 
 if (UNSAFE_TREAT_WARNINGS_AS_ERRORS)
     target_compile_options(${PROJECT_NAME} PRIVATE -Werror )
@@ -441,10 +443,10 @@ if(S2N_AWSLC_KYBER_UNSTABLE AND LIBCRYPTO_SUPPORTS_EVP_KYBER_512)
 endif()
 
 if (NOT DEFINED CMAKE_AR)
-	message(STATUS "CMAKE_AR undefined, setting to `ar` by default")
-	SET(CMAKE_AR ar)
+    message(STATUS "CMAKE_AR undefined, setting to `ar` by default")
+    SET(CMAKE_AR ar)
 else()
-	message(STATUS "CMAKE_AR found: ${CMAKE_AR}")
+    message(STATUS "CMAKE_AR found: ${CMAKE_AR}")
 endif()
 
 if (S2N_INTERN_LIBCRYPTO)
@@ -478,36 +480,36 @@ if (S2N_INTERN_LIBCRYPTO)
     include_directories("${crypto_INCLUDE_DIR}")
 
     add_custom_command(
-        OUTPUT libcrypto.symbols
-        COMMAND
-          # copy the static version of libcrypto
-          cp ${crypto_STATIC_LIBRARY} s2n_libcrypto.a &&
-          # dump all of the symbols and prefix them with `s2n$`
-          bash -c "nm s2n_libcrypto.a | awk '/ [A-Z] /{print $3\" s2n$\"$3}' | sort | uniq > libcrypto.symbols" &&
-          # redefine the libcrypto libary symbols
-          objcopy --redefine-syms libcrypto.symbols s2n_libcrypto.a &&
-          rm -rf s2n_libcrypto &&
-          mkdir s2n_libcrypto &&
-          cd s2n_libcrypto &&
-          # extract libcrypto objects from the archive
-	  ${CMAKE_AR} x ../s2n_libcrypto.a &&
-          # rename all of the object files so we don't have any object name collisions
-          bash -c "find . -name '*.o' -type f -print0 | xargs -0 -n1 -- basename | xargs -I{} mv {} s2n_crypto__{}"
-        VERBATIM
+            OUTPUT libcrypto.symbols
+            COMMAND
+            # copy the static version of libcrypto
+            cp ${crypto_STATIC_LIBRARY} s2n_libcrypto.a &&
+            # dump all of the symbols and prefix them with `s2n$`
+            bash -c "nm s2n_libcrypto.a | awk '/ [A-Z] /{print $3\" s2n$\"$3}' | sort | uniq > libcrypto.symbols" &&
+            # redefine the libcrypto libary symbols
+            objcopy --redefine-syms libcrypto.symbols s2n_libcrypto.a &&
+            rm -rf s2n_libcrypto &&
+            mkdir s2n_libcrypto &&
+            cd s2n_libcrypto &&
+            # extract libcrypto objects from the archive
+            ${CMAKE_AR} x ../s2n_libcrypto.a &&
+            # rename all of the object files so we don't have any object name collisions
+            bash -c "find . -name '*.o' -type f -print0 | xargs -0 -n1 -- basename | xargs -I{} mv {} s2n_crypto__{}"
+            VERBATIM
     )
 
     add_custom_target(s2n_libcrypto ALL
-      DEPENDS libcrypto.symbols
-    )
+            DEPENDS libcrypto.symbols
+            )
     add_dependencies(${PROJECT_NAME} s2n_libcrypto)
     add_definitions(-DS2N_INTERN_LIBCRYPTO)
 
     if ((BUILD_SHARED_LIBS AND BUILD_TESTING) OR NOT BUILD_SHARED_LIBS)
         # if libcrypto needs to be interned, rewrite libcrypto references so use of internal functions will link correctly
         add_custom_command(
-            TARGET ${PROJECT_NAME} PRE_LINK
-            COMMAND
-              find "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}.dir" -name '*.c.o' -exec objcopy --redefine-syms libcrypto.symbols {} \\\;
+                TARGET ${PROJECT_NAME} PRE_LINK
+                COMMAND
+                find "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}.dir" -name '*.c.o' -exec objcopy --redefine-syms libcrypto.symbols {} \\\;
         )
     endif()
 
@@ -516,20 +518,20 @@ if (S2N_INTERN_LIBCRYPTO)
         if (BUILD_TESTING)
             # if we're building tests, we export the prefixed symbols so tests can link to them
             set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS
-                "-Wl,--whole-archive s2n_libcrypto.a -Wl,--no-whole-archive")
+                    "-Wl,--whole-archive s2n_libcrypto.a -Wl,--no-whole-archive")
         else()
             # if we're not building tests, then just copy the original archive, unmodified
             set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS
-                "-Wl,--whole-archive ${crypto_STATIC_LIBRARY} -Wl,--no-whole-archive -Wl,--exclude-libs=ALL")
+                    "-Wl,--whole-archive ${crypto_STATIC_LIBRARY} -Wl,--no-whole-archive -Wl,--exclude-libs=ALL")
         endif()
     else()
         # add all of the prefixed symbols to the archive
         add_custom_command(
-            TARGET ${PROJECT_NAME} POST_BUILD
-            DEPENDS libcrypto.symbols
-            COMMAND
-              bash -c "ar -r lib/libs2n.a s2n_libcrypto/*.o"
-            VERBATIM
+                TARGET ${PROJECT_NAME} POST_BUILD
+                DEPENDS libcrypto.symbols
+                COMMAND
+                bash -c "ar -r lib/libs2n.a s2n_libcrypto/*.o"
+                VERBATIM
         )
     endif()
 else()
@@ -556,8 +558,8 @@ if (BUILD_TESTING)
     if (S2N_INTERN_LIBCRYPTO)
         # if libcrypto was interned, rewrite libcrypto symbols so use of internal functions will link correctly
         add_custom_command(
-            TARGET testss2n POST_BUILD
-            COMMAND
+                TARGET testss2n POST_BUILD
+                COMMAND
                 objcopy --redefine-syms libcrypto.symbols lib/libtestss2n.a
         )
     endif()
@@ -578,25 +580,25 @@ if (BUILD_TESTING)
         if (S2N_INTERN_LIBCRYPTO)
             # if libcrypto was interned, rewrite libcrypto symbols so use of internal functions will link correctly
             add_custom_command(
-                TARGET ${test_case_name} PRE_LINK
-                COMMAND
-                  find . -name '${test_case_name}.c.o' -exec objcopy --redefine-syms libcrypto.symbols {} \\\;
+                    TARGET ${test_case_name} PRE_LINK
+                    COMMAND
+                    find . -name '${test_case_name}.c.o' -exec objcopy --redefine-syms libcrypto.symbols {} \\\;
             )
         endif()
         target_compile_options(${test_case_name} PRIVATE -Wno-implicit-function-declaration -Wno-deprecated -D_POSIX_C_SOURCE=200809L -std=gnu99)
         add_test(NAME ${test_case_name} COMMAND $<TARGET_FILE:${test_case_name}> WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/unit)
 
         set_property(
-        TEST
-            ${test_case_name}
-        PROPERTY
-            ENVIRONMENT LD_PRELOAD=$<TARGET_FILE:allocator_overrides>)
+                TEST
+                ${test_case_name}
+                PROPERTY
+                ENVIRONMENT LD_PRELOAD=$<TARGET_FILE:allocator_overrides>)
 
         set_property(
-        TEST
-            ${test_case_name}
-        PROPERTY
-            ENVIRONMENT S2N_DONT_MLOCK=1)
+                TEST
+                ${test_case_name}
+                PROPERTY
+                ENVIRONMENT S2N_DONT_MLOCK=1)
 
     endforeach(test_case)
 
@@ -662,9 +664,9 @@ configure_file("cmake/${PROJECT_NAME}-config.cmake"
         @ONLY)
 
 if (BUILD_SHARED_LIBS)
-   set (TARGET_DIR "shared")
+    set (TARGET_DIR "shared")
 else()
-   set (TARGET_DIR "static")
+    set (TARGET_DIR "static")
 endif()
 
 install(EXPORT "${PROJECT_NAME}-targets"
