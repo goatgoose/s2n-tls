@@ -18,12 +18,16 @@ export CTEST_PARALLEL_LEVEL=$(sysctl hw.ncpu | awk '{print $2}')
 df -h
 pwd
 
-cmake . -Brelease -GNinja -DCMAKE_BUILD_TYPE=Release
-cmake --build ./release -j $CTEST_PARALLEL_LEVEL
-ninja -C release test
-cmake --build ./release --target clean #Saves on copy back rsync time
+export BUILD_DIR=/home/s2n-tls
+mkdir -p $BUILD_DIR
+ls $BUILD_DIR
 
-cmake . -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Debug
-cmake --build ./build -j $CTEST_PARALLEL_LEVEL
-ninja -C build test
-cmake --build ./build --target clean #Saves on copy back rsync time
+cmake . -B${BUILD_DIR}/release -GNinja -DCMAKE_BUILD_TYPE=Release
+cmake --build ${BUILD_DIR}/release -j $CTEST_PARALLEL_LEVEL
+ninja -C ${BUILD_DIR}/release test
+cmake --build ${BUILD_DIR}/release --target clean # Saves on copy back rsync time
+
+cmake . -B${BUILD_DIR}/debug -GNinja -DCMAKE_BUILD_TYPE=Debug
+cmake --build ${BUILD_DIR}/debug -j $CTEST_PARALLEL_LEVEL
+ninja -C ${BUILD_DIR}/debug test
+cmake --build ${BUILD_DIR}/debug --target clean # Saves on copy back rsync time
