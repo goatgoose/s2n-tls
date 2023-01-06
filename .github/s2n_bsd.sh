@@ -16,6 +16,7 @@ set -eu
 export CTEST_PARALLEL_LEVEL=$(sysctl hw.ncpu | awk '{print $2}')
 
 df -h
+pwd
 
 cmake . -Brelease -GNinja -DCMAKE_BUILD_TYPE=Release
 cmake --build ./release -j $CTEST_PARALLEL_LEVEL
