@@ -40,6 +40,7 @@ jobs:
           run: |
             uname -rsv
             .github/s2n_bsd.sh
+          mem: 2048
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@master
