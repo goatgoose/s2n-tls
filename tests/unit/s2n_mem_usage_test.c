@@ -29,7 +29,7 @@
    #include <unistd.h>
    #include <sys/types.h>
    #include <sys/sysctl.h>
-/* clang-format on */
+   /* clang-format on */
 #endif
 
 #include <errno.h>
