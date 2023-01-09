@@ -20,25 +20,21 @@ pwd
 
 export BUILD_DIR=/home/s2n-tls
 mkdir -p $BUILD_DIR
-ls $BUILD_DIR
+
+mkdir -p ${BUILD_DIR}/release/Testing
+mkdir -p ./release/Testing
+mkdir -p ${BUILD_DIR}/debug/Testing
+mkdir -p ./debug/Testing
+
+ln -s ${BUILD_DIR}/release/Testing/Temporary ./release/Testing/.
+ln -s ${BUILD_DIR}/debug/Testing/Temporary ./debug/Testing/.
 
 cmake . -B${BUILD_DIR}/release -GNinja -DCMAKE_BUILD_TYPE=Release
 cmake --build ${BUILD_DIR}/release -j $CTEST_PARALLEL_LEVEL
 ninja -C ${BUILD_DIR}/release test
 cmake --build ${BUILD_DIR}/release --target clean # Saves on copy back rsync time
 
-pwd
-ls
-mkdir -p ./release
-mv ${BUILD_DIR}/release/Testing ./release/.
-ls
-ls ./release
-ls ./release/Testing
-
 cmake . -B${BUILD_DIR}/debug -GNinja -DCMAKE_BUILD_TYPE=Debug
 cmake --build ${BUILD_DIR}/debug -j $CTEST_PARALLEL_LEVEL
 ninja -C ${BUILD_DIR}/debug test
 cmake --build ${BUILD_DIR}/debug --target clean # Saves on copy back rsync time
-
-mkdir -p ./debug/Testing
-mv ${BUILD_DIR}/debug/Testing ./debug/.
