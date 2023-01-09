@@ -18,15 +18,15 @@ jobs:
           prepare: pkg install -y ninja cmake
           run: |
             freebsd-version
-            .github/s2n_bsd.sh
+            mkdir build
+            .github/s2n_bsd.sh build
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@master
         with:
           name: all_test_output
           path: |
-            release/Testing/Temporary
-            debug/Testing/Temporary
+            build/test.txt
   testopenbsd:
     runs-on: macos-12
     name: OpenBSD
@@ -39,7 +39,9 @@ jobs:
           prepare: pkg_add ninja cmake
           run: |
             uname -rsv
-            .github/s2n_bsd.sh
+            mkdir /home/build
+            ln -s /home/build build
+            .github/s2n_bsd.sh build
           mem: 2048
       - name: Upload test results
         if: always()
@@ -47,5 +49,4 @@ jobs:
         with:
           name: all_test_output
           path: |
-            release/Testing/Temporary
-            debug/Testing/Temporary
+            build/test.txt

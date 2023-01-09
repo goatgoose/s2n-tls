@@ -13,28 +13,16 @@
 # permissions and limitations under the License.
 #
 set -eu
+
+if [ "$#" -ne "1" ]; then
+    echo "./s2n_bsd build_dir"
+    exit 1
+fi
+
+export BUILD_DIR=$1
 export CTEST_PARALLEL_LEVEL=$(sysctl hw.ncpu | awk '{print $2}')
 
-df -h
-pwd
+echo "test text" > "${BUILD_DIR}/test.txt"
+echo "build dir: ${BUILD_DIR}" > "${BUILD_DIR}/test.txt"
 
-export BUILD_DIR=/home/s2n-tls
-mkdir -p $BUILD_DIR
-
-mkdir -p ${BUILD_DIR}/release/Testing
-mkdir -p ./release/Testing
-mkdir -p ${BUILD_DIR}/debug/Testing
-mkdir -p ./debug/Testing
-
-ln -s ${BUILD_DIR}/release/Testing/Temporary ./release/Testing/.
-ln -s ${BUILD_DIR}/debug/Testing/Temporary ./debug/Testing/.
-
-cmake . -B${BUILD_DIR}/release -GNinja -DCMAKE_BUILD_TYPE=Release
-cmake --build ${BUILD_DIR}/release -j $CTEST_PARALLEL_LEVEL
-ninja -C ${BUILD_DIR}/release test
-cmake --build ${BUILD_DIR}/release --target clean # Saves on copy back rsync time
-
-cmake . -B${BUILD_DIR}/debug -GNinja -DCMAKE_BUILD_TYPE=Debug
-cmake --build ${BUILD_DIR}/debug -j $CTEST_PARALLEL_LEVEL
-ninja -C ${BUILD_DIR}/debug test
-cmake --build ${BUILD_DIR}/debug --target clean # Saves on copy back rsync time
+exit 1
