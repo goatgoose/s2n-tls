@@ -19,14 +19,17 @@ if [ "$#" -ne "1" ]; then
     exit 1
 fi
 
+export BUILD_DIR=$1
 export CTEST_PARALLEL_LEVEL=$(sysctl hw.ncpu | awk '{print $2}')
 
-export BUILD_DIR=/home/s2n-tls/build
-mkdir -p ${BUILD_DIR}
+cmake . "-B${BUILD_DIR}/release" -GNinja -DCMAKE_BUILD_TYPE=Release
+cmake --build "${BUILD_DIR}/release" -j $CTEST_PARALLEL_LEVEL
+ninja -C "${BUILD_DIR}/release" test
+cmake --build "${BUILD_DIR}/release" --target clean #Saves on copy back rsync time
 
-echo "test text" > "${BUILD_DIR}/test.txt"
-echo "build dir: ${BUILD_DIR}" > "${BUILD_DIR}/test.txt"
-
-mv "${BUILD_DIR}" .
+cmake . "-B${BUILD_DIR}/debug" -GNinja -DCMAKE_BUILD_TYPE=Debug
+cmake --build "${BUILD_DIR}/debug" -j $CTEST_PARALLEL_LEVEL
+ninja -C "${BUILD_DIR}/debug" test
+cmake --build "${BUILD_DIR}/debug" --target clean #Saves on copy back rsync time
 
 exit 1
