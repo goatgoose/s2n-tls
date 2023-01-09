@@ -42,7 +42,10 @@ jobs:
             uname -rsv
             mkdir /home/build
             .github/s2n_bsd.sh /home/build
-            mv /home/build build
+            mkdir -p build/release/Testing
+            mv /home/build/release/Testing/Temporary build/release/Testing/.
+            mkdir -p build/debug/Testing
+            mv /home/build/debug/Testing/Temporary build/debug/Testing/.
           mem: 2048
       - name: Upload test results
         if: always()
