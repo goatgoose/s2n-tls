@@ -25,8 +25,8 @@ jobs:
         with:
           name: all_test_output
           path: |
-            /home/s2n-tls/release/Testing/Temporary
-            /home/s2n-tls/debug/Testing/Temporary
+            release/Testing/Temporary
+            debug/Testing/Temporary
   testopenbsd:
     runs-on: macos-12
     name: OpenBSD
@@ -47,5 +47,5 @@ jobs:
         with:
           name: all_test_output
           path: |
-            /home/s2n-tls/release/Testing/Temporary
-            /home/s2n-tls/debug/Testing/Temporary
+            release/Testing/Temporary
+            debug/Testing/Temporary

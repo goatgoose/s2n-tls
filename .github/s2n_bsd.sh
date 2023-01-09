@@ -27,7 +27,13 @@ cmake --build ${BUILD_DIR}/release -j $CTEST_PARALLEL_LEVEL
 ninja -C ${BUILD_DIR}/release test
 cmake --build ${BUILD_DIR}/release --target clean # Saves on copy back rsync time
 
+mkdir -p ./release
+mv ${BUILD_DIR}/release/Testing ./release/.
+
 cmake . -B${BUILD_DIR}/debug -GNinja -DCMAKE_BUILD_TYPE=Debug
 cmake --build ${BUILD_DIR}/debug -j $CTEST_PARALLEL_LEVEL
 ninja -C ${BUILD_DIR}/debug test
 cmake --build ${BUILD_DIR}/debug --target clean # Saves on copy back rsync time
+
+mkdir -p ./debug/Testing
+mv ${BUILD_DIR}/debug/Testing ./debug/.
