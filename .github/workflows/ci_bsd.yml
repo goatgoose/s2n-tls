@@ -18,8 +18,7 @@ jobs:
           prepare: pkg install -y ninja cmake
           run: |
             freebsd-version
-            mkdir build
-            .github/s2n_bsd.sh build
+            .github/s2n_bsd.sh
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@master
@@ -39,9 +38,7 @@ jobs:
           prepare: pkg_add ninja cmake
           run: |
             uname -rsv
-            mkdir /home/build
-            ln -s /home/build build
-            .github/s2n_bsd.sh build
+            .github/s2n_bsd.sh
           mem: 2048
       - name: Upload test results
         if: always()

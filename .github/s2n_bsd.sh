@@ -19,10 +19,14 @@ if [ "$#" -ne "1" ]; then
     exit 1
 fi
 
-export BUILD_DIR=$1
 export CTEST_PARALLEL_LEVEL=$(sysctl hw.ncpu | awk '{print $2}')
+
+export BUILD_DIR=/home/s2n-tls/build
+mkdir -p ${BUILD_DIR}
 
 echo "test text" > "${BUILD_DIR}/test.txt"
 echo "build dir: ${BUILD_DIR}" > "${BUILD_DIR}/test.txt"
+
+mv "${BUILD_DIR}" .
 
 exit 1
