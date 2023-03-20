@@ -52,6 +52,7 @@ class AvailablePorts(object):
         next_port = 0
         with socket.socket(socket.AF_INET) as s:
             s.bind(('127.0.0.1', next_port))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             next_port = s.getsockname()[1]
             s.close()
         return next_port
