@@ -3,6 +3,7 @@ import re
 import subprocess
 import threading
 import itertools
+import socket
 
 
 from constants import TEST_CERT_DIRECTORY
@@ -43,34 +44,20 @@ class AvailablePorts(object):
     that all need unique port numbers.
     """
 
-    def __init__(self, low=8000, high=30000):
-        worker_count = int(os.getenv('PYTEST_XDIST_WORKER_COUNT'))
-        chunk_size = int((high - low) / worker_count)
-
-        # If xdist is being used, parse the workerid from the envvar. This can
-        # be used to allocate unique ports to each worker.
-        worker = os.getenv('PYTEST_XDIST_WORKER')
-        worker_id = 0
-        if worker is not None:
-            worker_id = re.findall(r"gw(\d+)", worker)
-            if len(worker_id) != 0:
-                worker_id = int(worker_id[0])
-
-        # This is a naive way to allocate ports, but it allows us to cut
-        # the run time in half without workers colliding.
-        worker_offset = (worker_id * chunk_size)
-        base_range = range(low + worker_offset, high)
-        wrap_range = range(low, low + worker_offset)
-        self.ports = iter(itertools.chain(base_range, wrap_range))
-
-        self.lock = threading.Lock()
-
     def __iter__(self):
         return self
 
+    @staticmethod
+    def _get_available_port():
+        next_port = 0
+        with socket.socket(socket.AF_INET) as s:
+            s.bind(('127.0.0.1', next_port))
+            next_port = s.getsockname()[1]
+            s.close()
+        return next_port
+
     def __next__(self):
-        with self.lock:
-            return next(self.ports)
+        return self._get_available_port()
 
 
 class TimeoutException(subprocess.SubprocessError):
