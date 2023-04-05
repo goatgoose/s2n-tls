@@ -43,9 +43,9 @@
  * distinguish AWS-LC fips and non-fips at pre-processing time since AWS-LC
  * doesn't distribute fips-specific header files.
  */
-#define EXPECTED_AWSLC_VERSION_PREFIX_FIPS_OR_OLD "BoringSSL"
-#define EXPECTED_AWSLC_VERSION_PREFIX_NON_FIPS    "AWS-LC"
-#define EXPECTED_BORINGSSL_VERSION_PREFIX         "BoringSSL"
+#define EXPECTED_AWSLC_VERSION_PREFIX_OLD   "BoringSSL"
+#define EXPECTED_AWSLC_VERSION_PREFIX_NEW   "AWS-LC"
+#define EXPECTED_BORINGSSL_VERSION_PREFIX   "BoringSSL"
 
 /* https://www.openssl.org/docs/man{1.0.2, 1.1.1, 3.0}/man3/OPENSSL_VERSION_NUMBER.html
  * OPENSSL_VERSION_NUMBER in hex is: MNNFFPPS major minor fix patch status.
@@ -187,15 +187,14 @@ S2N_RESULT s2n_libcrypto_validate_runtime(void)
     /* If we know the expected version name, we can validate it. */
     if (s2n_libcrypto_is_awslc()) {
         const char *expected_awslc_name_prefix = NULL;
-        /* For backwards compatability, also check the AWS-LC API version see
-         * https://github.com/awslabs/aws-lc/pull/467. When we are confident we
-         * don't meet anymore "old" AWS-LC libcrypto's, this API version check
-         * can be removed.
+        /* Before AWSLC API version 17, SSLeay_version returns "BoringSSL". After
+         * version 17, SSLeay_version returns "AWS-LC". This is true for FIPS and
+         * non-FIPS AWSLC versions. See https://github.com/aws/aws-lc/pull/467.
          */
-        if (s2n_libcrypto_is_fips() || s2n_libcrypto_awslc_api_version() < 17) {
-            expected_awslc_name_prefix = EXPECTED_AWSLC_VERSION_PREFIX_FIPS_OR_OLD;
+        if (s2n_libcrypto_awslc_api_version() < 17) {
+            expected_awslc_name_prefix = EXPECTED_AWSLC_VERSION_PREFIX_OLD;
         } else {
-            expected_awslc_name_prefix = EXPECTED_AWSLC_VERSION_PREFIX_NON_FIPS;
+            expected_awslc_name_prefix = EXPECTED_AWSLC_VERSION_PREFIX_NEW;
         }
         RESULT_GUARD(s2n_libcrypto_validate_expected_version_prefix(expected_awslc_name_prefix));
     } else if (s2n_libcrypto_is_boringssl()) {
