@@ -113,7 +113,6 @@ static int s2n_config_init(struct s2n_config *config)
     POSIX_GUARD_RESULT(s2n_map_complete(config->domain_name_to_cert_map));
 
     s2n_x509_trust_store_init_empty(&config->trust_store);
-    POSIX_GUARD(s2n_x509_trust_store_from_system_defaults(&config->trust_store));
 
     return 0;
 }
@@ -252,7 +251,18 @@ void s2n_wipe_static_configs(void)
     s2n_config_cleanup(&s2n_default_tls13_config);
 }
 
-struct s2n_config *s2n_config_new(void)
+int s2n_config_load_system_certs(struct s2n_config *config)
+{
+    POSIX_ENSURE_REF(config);
+    POSIX_ENSURE(!config->loaded_system_certs, S2N_ERR_X509_TRUST_STORE);
+
+    POSIX_GUARD(s2n_x509_trust_store_from_system_defaults(&config->trust_store));
+    config->loaded_system_certs = true;
+
+    return S2N_SUCCESS;
+}
+
+struct s2n_config *s2n_minimal_config_new(void)
 {
     struct s2n_blob allocator = { 0 };
     struct s2n_config *new_config;
@@ -265,6 +275,17 @@ struct s2n_config *s2n_config_new(void)
         s2n_free(&allocator);
         return NULL;
     }
+
+    return new_config;
+}
+
+struct s2n_config *s2n_config_new(void)
+{
+    struct s2n_config *new_config = s2n_minimal_config_new();
+    PTR_ENSURE_REF(new_config);
+
+    /* For backwards compatibility, s2n_config_new loads system certs by default. */
+    PTR_GUARD_POSIX(s2n_config_load_system_certs(new_config));
 
     return new_config;
 }
@@ -453,6 +474,7 @@ int s2n_config_wipe_trust_store(struct s2n_config *config)
     POSIX_ENSURE_REF(config);
 
     s2n_x509_trust_store_wipe(&config->trust_store);
+    config->loaded_system_certs = false;
 
     return S2N_SUCCESS;
 }
