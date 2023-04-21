@@ -259,9 +259,9 @@ def test_tls_12_client_auth_downgrade(managed_process, certificate):
         cert=certificate.cert,
         trust_store=Certificates.ECDSA_256.cert,
         insecure=False,
+        protocol=Protocols.TLS13,
+        extra_flags=["-tls1_2"]
     )
-
-    client_options.extra_flags = ["--no-ca-verification"]
 
     server_options = ProviderOptions(
         mode=Provider.ServerMode,
@@ -275,10 +275,7 @@ def test_tls_12_client_auth_downgrade(managed_process, certificate):
     )
 
     server = managed_process(S2N, server_options, timeout=5)
-
-    # Choose a client provider that supports TLS 1.3. GnuTLS is configured to support all TLS versions
-    # by default, so a TLS 1.3 client hello will be sent and a TLS 1.2 downgrade is possible.
-    client = managed_process(GnuTLS, client_options, timeout=5)
+    client = managed_process(OpenSSL, client_options, timeout=5)
 
     # A s2n server built with OpenSSL1.0.2 and enabling client auth will downgrade the protocol to TLS1.2.
     # The downgrade occurs because openssl-1.0.2 doesn't support RSA-PSS signature scheme.
