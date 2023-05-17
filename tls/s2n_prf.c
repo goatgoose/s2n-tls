@@ -41,8 +41,10 @@ static int s2n_sslv3_prf(struct s2n_connection *conn, struct s2n_blob *secret, s
     POSIX_ENSURE_REF(conn->handshake.hashes);
     struct s2n_hash_state *workspace = &conn->handshake.hashes->hash_workspace;
 
+    POSIX_ENSURE_EQ(conn->actual_protocol_version, S2N_SSLv3);
+
     /* FIPS specifically allows MD5 for the legacy PRF */
-    if (s2n_is_in_fips_mode() && conn->actual_protocol_version < S2N_TLS12) {
+    if (s2n_is_in_fips_mode()) {
         POSIX_GUARD(s2n_hash_allow_md5_for_fips(workspace));
     }
 
@@ -459,21 +461,13 @@ S2N_RESULT s2n_prf_free(struct s2n_connection *conn)
     return S2N_RESULT_OK;
 }
 
-static int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+static S2N_RESULT s2n_custom_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
         struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
 {
-    POSIX_ENSURE_REF(conn);
-    POSIX_ENSURE_REF(secret);
-    POSIX_ENSURE_REF(conn->prf_space);
-    POSIX_ENSURE_REF(conn->secure);
-
-    /* seed_a is always required, seed_b is optional, if seed_c is provided seed_b must also be provided */
-    S2N_ERROR_IF(seed_a == NULL, S2N_ERR_PRF_INVALID_SEED);
-    S2N_ERROR_IF(seed_b == NULL && seed_c != NULL, S2N_ERR_PRF_INVALID_SEED);
-
-    if (conn->actual_protocol_version == S2N_SSLv3) {
-        return s2n_sslv3_prf(conn, secret, seed_a, seed_b, seed_c, out);
-    }
+    RESULT_ENSURE_REF(conn->prf_space);
+    RESULT_ENSURE_REF(conn->secure);
+    RESULT_ENSURE_GT(conn->actual_protocol_version, S2N_SSLv3);
+    RESULT_ENSURE_LT(conn->actual_protocol_version, S2N_TLS13);
 
     /* We zero the out blob because p_hash works by XOR'ing with the existing
      * buffer. This is a little convoluted but means we can avoid dynamic memory
@@ -481,21 +475,56 @@ static int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct 
      * the right values. When we call it twice in the regular case, the two
      * outputs will be XORd just ass the TLS 1.0 and 1.1 RFCs require.
      */
-    POSIX_GUARD(s2n_blob_zero(out));
+    RESULT_GUARD_POSIX(s2n_blob_zero(out));
 
     if (conn->actual_protocol_version == S2N_TLS12) {
-        return s2n_p_hash(conn->prf_space, conn->secure->cipher_suite->prf_alg, secret, label, seed_a, seed_b,
-                seed_c, out);
+        RESULT_GUARD_POSIX(s2n_p_hash(conn->prf_space, conn->secure->cipher_suite->prf_alg, secret, label, seed_a, seed_b, seed_c, out));
+        return S2N_RESULT_OK;
     }
 
     struct s2n_blob half_secret = { 0 };
-    POSIX_GUARD(s2n_blob_init(&half_secret, secret->data, (secret->size + 1) / 2));
+    RESULT_GUARD_POSIX(s2n_blob_init(&half_secret, secret->data, (secret->size + 1) / 2));
 
-    POSIX_GUARD(s2n_p_hash(conn->prf_space, S2N_HMAC_MD5, &half_secret, label, seed_a, seed_b, seed_c, out));
+    RESULT_GUARD_POSIX(s2n_p_hash(conn->prf_space, S2N_HMAC_MD5, &half_secret, label, seed_a, seed_b, seed_c, out));
     half_secret.data += secret->size - half_secret.size;
-    POSIX_GUARD(s2n_p_hash(conn->prf_space, S2N_HMAC_SHA1, &half_secret, label, seed_a, seed_b, seed_c, out));
+    RESULT_GUARD_POSIX(s2n_p_hash(conn->prf_space, S2N_HMAC_SHA1, &half_secret, label, seed_a, seed_b, seed_c, out));
 
-    return 0;
+    return S2N_RESULT_OK;
+}
+
+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
+#else
+//static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+//        struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
+//{
+//    return S2N_RESULT_OK;
+//}
+#endif /* defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC) */
+
+static int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+        struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
+{
+    POSIX_ENSURE_REF(conn);
+    POSIX_ENSURE_REF(secret);
+    POSIX_ENSURE_REF(label);
+    POSIX_ENSURE_REF(out);
+
+    /* seed_a is always required, seed_b is optional, if seed_c is provided seed_b must also be provided */
+    POSIX_ENSURE(seed_a != NULL, S2N_ERR_PRF_INVALID_SEED);
+    POSIX_ENSURE(S2N_IMPLIES(seed_c != NULL, seed_b != NULL), S2N_ERR_PRF_INVALID_SEED);
+
+    if (conn->actual_protocol_version == S2N_SSLv3) {
+        POSIX_GUARD(s2n_sslv3_prf(conn, secret, seed_a, seed_b, seed_c, out));
+        return S2N_SUCCESS;
+    }
+
+    /* By default, s2n-tls uses a custom PRF implementation. When operating in FIPS mode, the
+     * FIPS-validated libcrypto implementation is used instead.
+     */
+
+    POSIX_GUARD_RESULT(s2n_custom_prf(conn, secret, label, seed_a, seed_b, seed_c, out));
+
+    return S2N_SUCCESS;
 }
 
 int s2n_tls_prf_master_secret(struct s2n_connection *conn, struct s2n_blob *premaster_secret)
