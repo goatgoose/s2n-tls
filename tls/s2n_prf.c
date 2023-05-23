@@ -45,8 +45,6 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
 #include "utils/s2n_mem.h"
 #include "utils/s2n_safety.h"
 
-//DEFINE_POINTER_CLEANUP_FUNC(EVP_PKEY_CTX*, EVP_PKEY_CTX_free);
-
 static int s2n_sslv3_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *seed_a,
         struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
 {
@@ -540,6 +538,25 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
     return S2N_RESULT_OK;
 }
 #else
+DEFINE_POINTER_CLEANUP_FUNC(EVP_PKEY_CTX*, EVP_PKEY_CTX_free);
+
+static EVP_MD* s2n_unsafe_evp_md_get_non_const(const EVP_MD *md)
+{
+    PTR_ENSURE_REF(md);
+
+    /* pragma gcc diagnostic was added in gcc 4.6 */
+    #if defined(__clang__) || S2N_GCC_VERSION_AT_LEAST(4, 6, 0)
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wcast-qual"
+    #endif
+    EVP_MD *out_md = (EVP_MD *) md;
+    #if defined(__clang__) || S2N_GCC_VERSION_AT_LEAST(4, 6, 0)
+        #pragma GCC diagnostic pop
+    #endif
+
+    return out_md;
+}
+
 static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
         struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
 {
@@ -554,7 +571,7 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
     RESULT_ENSURE_REF(pctx);
 
     RESULT_GUARD_OSSL(EVP_PKEY_derive_init(pctx), S2N_ERR_PRF_DERIVE);
-    RESULT_GUARD_OSSL(EVP_PKEY_CTX_set_tls1_prf_md(pctx, md), S2N_ERR_PRF_DERIVE);
+    RESULT_GUARD_OSSL(EVP_PKEY_CTX_set_tls1_prf_md(pctx, s2n_unsafe_evp_md_get_non_const(md)), S2N_ERR_PRF_DERIVE);
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, secret->data, secret->size), S2N_ERR_PRF_DERIVE);
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, label->data, label->size), S2N_ERR_PRF_DERIVE);
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, seed_a->data, seed_a->size), S2N_ERR_PRF_DERIVE);
