@@ -16,6 +16,9 @@
 #include "tls/s2n_prf.h"
 
 #if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
+/* BoringSSL and AWSLC expose the CRYPTO_tls1_prf API via a private header. The function is
+ * forward-declared so it's accessible.
+ */
 int CRYPTO_tls1_prf(const EVP_MD *digest,
         uint8_t *out, size_t out_len,
         const uint8_t *secret, size_t secret_len,
@@ -501,7 +504,13 @@ static S2N_RESULT s2n_custom_prf(struct s2n_connection *conn, struct s2n_blob *s
     return S2N_RESULT_OK;
 }
 
-#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
+#if !S2N_LIBCRYPTO_SUPPORTS_TLS_PRF
+static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+        struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+#elif defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
 static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
         struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
 {
@@ -518,9 +527,9 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
     size_t seed2_len = 0;
 
     if (seed_b != NULL && seed_c != NULL) {
-        /* The AWSLC TLS PRF implementation doesn't support providing more than a label and two
-         * seeds. If three seeds were provided, pass in the third seed by concatenating it with the
-         * second seed.
+        /* The AWSLC/BoringSSL TLS PRF implementation doesn't support providing more than a label
+         * and two seeds. If three seeds were provided, pass in the third seed by concatenating it
+         * with the second seed.
          */
         RESULT_GUARD_POSIX(s2n_alloc(&seed2_dyn, seed_b->size + seed_c->size));
         RESULT_CHECKED_MEMCPY(seed2_dyn.data, seed_b->data, seed_b->size);
@@ -540,7 +549,7 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
 #else
 DEFINE_POINTER_CLEANUP_FUNC(EVP_PKEY_CTX*, EVP_PKEY_CTX_free);
 
-static EVP_MD* s2n_unsafe_evp_md_get_non_const(const EVP_MD *md)
+static EVP_MD* s2n_unsafe_get_non_const_evp_md(const EVP_MD *md)
 {
     PTR_ENSURE_REF(md);
 
@@ -571,7 +580,12 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
     RESULT_ENSURE_REF(pctx);
 
     RESULT_GUARD_OSSL(EVP_PKEY_derive_init(pctx), S2N_ERR_PRF_DERIVE);
-    RESULT_GUARD_OSSL(EVP_PKEY_CTX_set_tls1_prf_md(pctx, s2n_unsafe_evp_md_get_non_const(md)), S2N_ERR_PRF_DERIVE);
+
+    /* The EVP_PKEY_CTX_set_tls1_prf_md macro casts the md EVP_MD argument to a void *, discarding
+     * the const qualifier. The compiler warnings are turned off before this cast.
+     */
+    RESULT_GUARD_OSSL(EVP_PKEY_CTX_set_tls1_prf_md(pctx, s2n_unsafe_get_non_const_evp_md(md)), S2N_ERR_PRF_DERIVE);
+
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, secret->data, secret->size), S2N_ERR_PRF_DERIVE);
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, label->data, label->size), S2N_ERR_PRF_DERIVE);
     RESULT_GUARD_OSSL(EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, seed_a->data, seed_a->size), S2N_ERR_PRF_DERIVE);
@@ -590,7 +604,7 @@ static S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob
 }
 #endif /* defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC) */
 
-static int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
         struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out)
 {
     POSIX_ENSURE_REF(conn);
@@ -612,9 +626,10 @@ static int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct 
     }
 
     /* By default, s2n-tls uses a custom PRF implementation. When operating in FIPS mode, the
-     * FIPS-validated libcrypto implementation is used instead.
+     * FIPS-validated libcrypto implementation is used instead, if the libcrypto implements the
+     * TLS PRF.
      */
-    if (true) {
+    if (s2n_is_in_fips_mode() && s2n_libcrypto_supports_tls_prf()) {
         POSIX_GUARD_RESULT(s2n_libcrypto_prf(conn, secret, label, seed_a, seed_b, seed_c, out));
         return S2N_SUCCESS;
     }

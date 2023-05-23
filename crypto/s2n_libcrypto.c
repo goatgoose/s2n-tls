@@ -191,3 +191,8 @@ unsigned long s2n_get_openssl_version(void)
 {
     return OPENSSL_VERSION_NUMBER;
 }
+
+bool s2n_libcrypto_supports_tls_prf()
+{
+    return S2N_LIBCRYPTO_SUPPORTS_TLS_PRF;
+}

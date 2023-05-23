@@ -59,3 +59,11 @@
 bool s2n_libcrypto_is_awslc();
 bool s2n_libcrypto_is_boringssl();
 bool s2n_libcrypto_is_libressl();
+
+#if S2N_OPENSSL_VERSION_AT_LEAST(1, 1, 0) && !defined(LIBRESSL_VERSION_NUMBER)
+    #define S2N_LIBCRYPTO_SUPPORTS_TLS_PRF 1
+#else
+    #define S2N_LIBCRYPTO_SUPPORTS_TLS_PRF 0
+#endif
+
+bool s2n_libcrypto_supports_tls_prf();

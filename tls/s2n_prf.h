@@ -54,6 +54,8 @@ S2N_RESULT s2n_prf_new(struct s2n_connection *conn);
 S2N_RESULT s2n_prf_wipe(struct s2n_connection *conn);
 S2N_RESULT s2n_prf_free(struct s2n_connection *conn);
 
+int s2n_prf(struct s2n_connection *conn, struct s2n_blob *secret, struct s2n_blob *label, struct s2n_blob *seed_a,
+        struct s2n_blob *seed_b, struct s2n_blob *seed_c, struct s2n_blob *out);
 int s2n_prf_calculate_master_secret(struct s2n_connection *conn, struct s2n_blob *premaster_secret);
 int s2n_tls_prf_master_secret(struct s2n_connection *conn, struct s2n_blob *premaster_secret);
 int s2n_hybrid_prf_master_secret(struct s2n_connection *conn, struct s2n_blob *premaster_secret);
