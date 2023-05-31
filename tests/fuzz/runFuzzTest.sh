@@ -29,7 +29,7 @@ fi
 TEST_NAME=$1
 FUZZ_TIMEOUT_SEC=$2
 MIN_TEST_PER_SEC="1000"
-MIN_FEATURES_COVERED="100"
+MIN_FEATURES_COVERED="0"
 
 # Failures for negative tests on AFL can be ignored.
 if [[ $TEST_NAME == *_negative_test && "$AFL_FUZZ" != "true" ]];

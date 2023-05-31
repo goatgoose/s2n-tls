@@ -32,12 +32,20 @@ time_t time (time_t *__timer)
 }
 
 
+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
+int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
+        const uint8_t *sig, size_t sig_len, RSA *rsa){
+    /* Always assume that the RSA_verify function passes */
+    return 1;
+}
+#else
 int RSA_verify(int dtype, const unsigned char *m, unsigned int m_len,
-                 const unsigned char *sigbuf, unsigned int siglen, RSA *rsa)
+        const unsigned char *sigbuf, unsigned int siglen, RSA *rsa)
 {
     /* Always assume that the RSA_verify function passes */
     return 1;
 }
+#endif
 
 bool s2n_constant_time_equals(const uint8_t *a, const uint8_t *b, uint32_t len)
 {
