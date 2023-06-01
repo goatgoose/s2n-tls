@@ -265,6 +265,9 @@ endif
 TRY_COMPILE_TLS_PRF := $(call try_compile,$(S2N_ROOT)/tests/features/tls_prf.c)
 ifeq ($(TRY_COMPILE_TLS_PRF), 0)
 	DEFAULT_CFLAGS += -DS2N_LIBCRYPTO_SUPPORTS_TLS_PRF
+	$(info "S2N_LIBCRYPTO_SUPPORTS_TLS_PRF DEFINED")
+else
+	$(info "S2N_LIBCRYPTO_SUPPORTS_TLS_PRF NOT DEFINED")
 endif
 
 CFLAGS_LLVM = ${DEFAULT_CFLAGS} -emit-llvm -c -g -O1
