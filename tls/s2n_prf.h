@@ -37,18 +37,6 @@ struct s2n_prf_working_space {
     uint8_t digest1[S2N_MAX_DIGEST_LEN];
 };
 
-/* The s2n p_hash implementation is abstracted to allow for separate implementations, using
- * either s2n's formally verified HMAC or OpenSSL's EVP HMAC, for use by the TLS PRF. */
-struct s2n_p_hash_hmac {
-    int (*alloc)(struct s2n_prf_working_space *ws);
-    int (*init)(struct s2n_prf_working_space *ws, s2n_hmac_algorithm alg, struct s2n_blob *secret);
-    int (*update)(struct s2n_prf_working_space *ws, const void *data, uint32_t size);
-    int (*final)(struct s2n_prf_working_space *ws, void *digest, uint32_t size);
-    int (*reset)(struct s2n_prf_working_space *ws);
-    int (*cleanup)(struct s2n_prf_working_space *ws);
-    int (*free)(struct s2n_prf_working_space *ws);
-};
-
 #include "tls/s2n_connection.h"
 
 S2N_RESULT s2n_prf_new(struct s2n_connection *conn);
