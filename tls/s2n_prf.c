@@ -235,37 +235,6 @@ S2N_RESULT s2n_custom_prf(struct s2n_connection *conn, struct s2n_blob *secret, 
 
 #if S2N_LIBCRYPTO_SUPPORTS_TLS_PRF
 
-static S2N_RESULT s2n_md_from_hmac_alg(s2n_hmac_algorithm alg, const EVP_MD **md)
-{
-    RESULT_ENSURE_REF(md);
-
-    switch (alg) {
-        case S2N_HMAC_SSLv3_MD5:
-        case S2N_HMAC_MD5:
-            *md = EVP_md5();
-            break;
-        case S2N_HMAC_SSLv3_SHA1:
-        case S2N_HMAC_SHA1:
-            *md = EVP_sha1();
-            break;
-        case S2N_HMAC_SHA224:
-            *md = EVP_sha224();
-            break;
-        case S2N_HMAC_SHA256:
-            *md = EVP_sha256();
-            break;
-        case S2N_HMAC_SHA384:
-            *md = EVP_sha384();
-            break;
-        case S2N_HMAC_SHA512:
-            *md = EVP_sha512();
-            break;
-        default:
-            RESULT_BAIL(S2N_ERR_P_HASH_INVALID_ALGORITHM);
-    }
-    return S2N_RESULT_OK;
-}
-
 /* The AWSLC TLS PRF API is exported in all AWSLC versions. However, in the AWSLC FIPS branch, this
  * API is defined in a private header:
  * https://github.com/aws/aws-lc/blob/d251b365b73a6e6acff6ee634aa8f077f23cdea4/crypto/fipsmodule/tls/internal.h#L27
@@ -291,7 +260,7 @@ S2N_RESULT s2n_libcrypto_prf(struct s2n_connection *conn, struct s2n_blob *secre
          */
         digest = EVP_md5_sha1();
     } else {
-        RESULT_GUARD(s2n_md_from_hmac_alg(conn->secure->cipher_suite->prf_alg, &digest));
+        RESULT_GUARD(s2n_hmac_md_from_alg(conn->secure->cipher_suite->prf_alg, &digest));
     }
     RESULT_ENSURE_REF(digest);
 
