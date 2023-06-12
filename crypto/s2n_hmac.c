@@ -29,6 +29,7 @@
 #include "utils/s2n_mem.h"
 
 #include <stdint.h>
+#include <limits.h>
 
 int s2n_hash_hmac_alg(s2n_hash_algorithm hash_alg, s2n_hmac_algorithm *out)
 {
@@ -188,6 +189,7 @@ struct s2n_hmac_impl {
     int (*free)(struct s2n_hmac_state *state);
     int (*reset)(struct s2n_hmac_state *state);
     int (*copy)(struct s2n_hmac_state *to, struct s2n_hmac_state *from);
+    int (*wipe)(struct s2n_hmac_state *state);
 };
 
 S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
@@ -204,6 +206,7 @@ S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
 int s2n_custom_hmac_new(struct s2n_hmac_state *state)
 {
     POSIX_ENSURE_REF(state);
+    state->ctx = NULL;
     POSIX_GUARD(s2n_hash_new(&state->inner));
     POSIX_GUARD(s2n_hash_new(&state->inner_just_key));
     POSIX_GUARD(s2n_hash_new(&state->outer));
@@ -343,6 +346,13 @@ int s2n_custom_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
     return S2N_SUCCESS;
 }
 
+int s2n_custom_hmac_wipe(struct s2n_hmac_state *state)
+{
+    POSIX_ENSURE_REF(state);
+    POSIX_GUARD(s2n_custom_hmac_init(state, S2N_HMAC_NONE, NULL, 0));
+    return S2N_SUCCESS;
+}
+
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
     .validate = &s2n_custom_hmac_state_validate,
     .new = &s2n_custom_hmac_new,
@@ -352,6 +362,7 @@ const struct s2n_hmac_impl s2n_custom_hmac_impl = {
     .free = &s2n_custom_hmac_free,
     .reset = &s2n_custom_hmac_reset,
     .copy = &s2n_custom_hmac_copy,
+    .wipe = &s2n_custom_hmac_wipe,
 };
 
 S2N_RESULT s2n_libcrypto_hmac_state_validate(struct s2n_hmac_state *state)
@@ -364,7 +375,6 @@ S2N_RESULT s2n_libcrypto_hmac_state_validate(struct s2n_hmac_state *state)
 int s2n_libcrypto_hmac_new(struct s2n_hmac_state *state)
 {
     POSIX_ENSURE_REF(state);
-    POSIX_ENSURE_EQ(state->ctx, NULL);
 
     state->ctx = HMAC_CTX_new();
     POSIX_ENSURE_REF(state->ctx);
@@ -375,33 +385,80 @@ int s2n_libcrypto_hmac_new(struct s2n_hmac_state *state)
 int s2n_libcrypto_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen)
 {
     POSIX_ENSURE_REF(state);
-    POSIX_ENSURE_REF(key);
+
+    /* The libcrypto HMAC API doesn't support the SSLv3 MAC. However, since the libcrypto HMAC
+     * implementation is only enabled when operating in FIPS mode, SSLv3 won't be in use.
+     */
+    POSIX_ENSURE(alg != S2N_HMAC_SSLv3_SHA1, S2N_ERR_HASH_INVALID_ALGORITHM);
+    POSIX_ENSURE(alg != S2N_HMAC_SSLv3_MD5, S2N_ERR_HASH_INVALID_ALGORITHM);
+
+    const EVP_MD *digest = NULL;
+    POSIX_GUARD_RESULT(s2n_hmac_md_from_alg(alg, &digest));
+
+    POSIX_GUARD_OSSL(HMAC_Init_ex(state->ctx, key, klen, digest, NULL), S2N_ERR_HMAC_INIT);
+
+    state->alg = alg;
 
     return S2N_SUCCESS;
 }
 
 int s2n_libcrypto_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
+    POSIX_ENSURE_REF(state);
+    POSIX_ENSURE_REF(in);
+
+    POSIX_GUARD_OSSL(HMAC_Update(state->ctx, (const uint8_t *) in, (size_t) size), S2N_ERR_HMAC);
+
     return S2N_SUCCESS;
 }
 
 int s2n_libcrypto_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
 {
+    POSIX_ENSURE_REF(state);
+    POSIX_ENSURE_REF(out);
+
+    POSIX_ENSURE_LTE(size, INT_MAX);
+    unsigned int written = 0;
+
+    POSIX_GUARD_OSSL(HMAC_Final(state->ctx, (uint8_t *) out, &written), S2N_ERR_HMAC);
+
+    //printf("size: %d, written: %d\n", size, written);
+
+    //POSIX_ENSURE_EQ(written, size);
+
     return S2N_SUCCESS;
 }
 
 int s2n_libcrypto_hmac_free(struct s2n_hmac_state *state)
 {
+    if (state && state->ctx) {
+        HMAC_CTX_free(state->ctx);
+    }
     return S2N_SUCCESS;
 }
 
 int s2n_libcrypto_hmac_reset(struct s2n_hmac_state *state)
 {
+    POSIX_ENSURE_REF(state);
+    //POSIX_GUARD_OSSL(HMAC_Init_ex(ws->p_hash.evp_hmac.ctx.hmac_ctx, NULL, 0, ws->p_hash.evp_hmac.evp_digest.md, NULL), S2N_ERR_P_HASH_INIT_FAILED);
+    HMAC_CTX_reset(state->ctx);
     return S2N_SUCCESS;
 }
 
 int s2n_libcrypto_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
 {
+    POSIX_ENSURE_REF(to);
+    POSIX_ENSURE_REF(from);
+
+    POSIX_GUARD_OSSL(HMAC_CTX_copy_ex(to->ctx, from->ctx), S2N_ERR_HMAC_INIT);
+
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_wipe(struct s2n_hmac_state *state)
+{
+    POSIX_ENSURE_REF(state);
+    HMAC_CTX_cleanup(state->ctx);
     return S2N_SUCCESS;
 }
 
@@ -414,11 +471,20 @@ const struct s2n_hmac_impl s2n_libcrypto_hmac_impl = {
     .free = &s2n_libcrypto_hmac_free,
     .reset = &s2n_libcrypto_hmac_reset,
     .copy = &s2n_libcrypto_hmac_copy,
+    .wipe = &s2n_libcrypto_hmac_wipe,
 };
 
 static const struct s2n_hmac_impl *s2n_get_hmac_impl()
 {
+    /* By default, s2n-tls uses a custom HMAC implementation. When operating in FIPS mode, the
+     * FIPS-validated libcrypto implementation is used instead.
+     */
+    if (s2n_is_in_fips_mode()) {
+        return &s2n_libcrypto_hmac_impl;
+    }
+
     return &s2n_libcrypto_hmac_impl;
+//    return &s2n_custom_hmac_impl;
 }
 
 int s2n_hmac_new(struct s2n_hmac_state *state)
@@ -534,6 +600,17 @@ int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
 
     POSIX_GUARD_RESULT(hmac->validate(to));
     POSIX_GUARD_RESULT(hmac->validate(from));
+
+    return S2N_SUCCESS;
+}
+
+int s2n_hmac_wipe(struct s2n_hmac_state *state)
+{
+    const struct s2n_hmac_impl *hmac = s2n_get_hmac_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->validate(state));
+    POSIX_GUARD(hmac->wipe(state));
 
     return S2N_SUCCESS;
 }

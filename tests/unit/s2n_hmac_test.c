@@ -138,6 +138,7 @@ int main(int argc, char **argv)
     POSIX_GUARD(s2n_hmac_digest_size(S2N_HMAC_SHA1, &hmac_sha1_size));
     EXPECT_EQUAL(hmac_sha1_size, 20);
     EXPECT_SUCCESS(s2n_hmac_init(&hmac, S2N_HMAC_SHA1, sekrit, strlen((char *) sekrit)));
+    EXPECT_SUCCESS(s2n_hmac_reset(&hmac));
     EXPECT_SUCCESS(s2n_hmac_update(&hmac, hello, strlen((char *) hello)));
     EXPECT_SUCCESS(s2n_hmac_copy(&copy, &hmac));
     EXPECT_SUCCESS(s2n_hmac_digest(&hmac, digest_pad, 20));

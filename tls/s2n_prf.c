@@ -170,7 +170,7 @@ S2N_RESULT s2n_prf_new(struct s2n_connection *conn)
     /* Allocate the hmac state */
     struct s2n_hmac_state *hmac = &conn->prf_space->s2n_hmac;
     RESULT_GUARD_POSIX(s2n_hmac_new(hmac));
-    RESULT_GUARD_POSIX(s2n_hmac_init(hmac, S2N_HMAC_NONE, NULL, 0));
+    RESULT_GUARD_POSIX(s2n_hmac_wipe(hmac));
 
     return S2N_RESULT_OK;
 }
