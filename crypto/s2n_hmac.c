@@ -193,6 +193,7 @@ struct s2n_hmac_impl {
 S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
+    RESULT_ENSURE_EQ(state->ctx, NULL);
     RESULT_GUARD(s2n_hash_state_validate(&state->inner));
     RESULT_GUARD(s2n_hash_state_validate(&state->inner_just_key));
     RESULT_GUARD(s2n_hash_state_validate(&state->outer));
@@ -353,9 +354,71 @@ const struct s2n_hmac_impl s2n_custom_hmac_impl = {
     .copy = &s2n_custom_hmac_copy,
 };
 
+S2N_RESULT s2n_libcrypto_hmac_state_validate(struct s2n_hmac_state *state)
+{
+    RESULT_ENSURE_REF(state);
+    RESULT_ENSURE_REF(state->ctx);
+    return S2N_RESULT_OK;
+}
+
+int s2n_libcrypto_hmac_new(struct s2n_hmac_state *state)
+{
+    POSIX_ENSURE_REF(state);
+    POSIX_ENSURE_EQ(state->ctx, NULL);
+
+    state->ctx = HMAC_CTX_new();
+    POSIX_ENSURE_REF(state->ctx);
+
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen)
+{
+    POSIX_ENSURE_REF(state);
+    POSIX_ENSURE_REF(key);
+
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
+{
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
+{
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_free(struct s2n_hmac_state *state)
+{
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_reset(struct s2n_hmac_state *state)
+{
+    return S2N_SUCCESS;
+}
+
+int s2n_libcrypto_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
+{
+    return S2N_SUCCESS;
+}
+
+const struct s2n_hmac_impl s2n_libcrypto_hmac_impl = {
+    .validate = &s2n_libcrypto_hmac_state_validate,
+    .new = &s2n_libcrypto_hmac_new,
+    .init = &s2n_libcrypto_hmac_init,
+    .update = &s2n_libcrypto_hmac_update,
+    .digest = &s2n_libcrypto_hmac_digest,
+    .free = &s2n_libcrypto_hmac_free,
+    .reset = &s2n_libcrypto_hmac_reset,
+    .copy = &s2n_libcrypto_hmac_copy,
+};
+
 static const struct s2n_hmac_impl *s2n_get_hmac_impl()
 {
-    return &s2n_custom_hmac_impl;
+    return &s2n_libcrypto_hmac_impl;
 }
 
 int s2n_hmac_new(struct s2n_hmac_state *state)
@@ -432,6 +495,9 @@ int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *o
 
 int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len)
 {
+    POSIX_ENSURE_REF(a);
+    POSIX_ENSURE_REF(b);
+
     return S2N_SUCCESS - !s2n_constant_time_equals(a, b, len);
 }
 
@@ -440,7 +506,6 @@ int s2n_hmac_free(struct s2n_hmac_state *state)
     const struct s2n_hmac_impl *hmac = s2n_get_hmac_impl();
     POSIX_ENSURE_REF(hmac);
 
-    POSIX_GUARD_RESULT(hmac->validate(state));
     POSIX_GUARD(hmac->free(state));
 
     return S2N_SUCCESS;

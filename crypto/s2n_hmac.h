@@ -36,6 +36,11 @@ typedef enum {
 struct s2n_hmac_state {
     s2n_hmac_algorithm alg;
 
+    /* The libcrypto maintains its HMAC state via the HMAC_CTX object. This is only allocated and
+     * used if s2n-tls is operating in FIPS mode.
+     */
+    HMAC_CTX *ctx;
+
     uint16_t hash_block_size;
     uint32_t currently_in_hash_block;
     uint16_t xor_pad_size;
