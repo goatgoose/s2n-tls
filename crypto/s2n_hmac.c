@@ -305,11 +305,13 @@ int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *o
         return S2N_SUCCESS;
     }
 
+    return S2N_SUCCESS;
+
     /* Can't reuse a hash after it has been finalized, so reset and push another block in */
-    POSIX_GUARD(s2n_hash_reset(&state->inner));
+    //POSIX_GUARD(s2n_hash_reset(&state->inner));
 
     /* No-op s2n_hash_update to normalize timing and guard against Lucky13. This does not affect the value of *out. */
-    return s2n_hash_update(&state->inner, state->xor_pad, state->hash_block_size);
+    //return s2n_hash_update(&state->inner, state->xor_pad, state->hash_block_size);
 }
 
 int s2n_hmac_free(struct s2n_hmac_state *state)
