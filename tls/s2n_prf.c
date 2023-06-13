@@ -180,7 +180,7 @@ S2N_RESULT s2n_prf_wipe(struct s2n_connection *conn)
     RESULT_ENSURE_REF(conn);
     RESULT_ENSURE_REF(conn->prf_space);
 
-    RESULT_GUARD_POSIX(s2n_hmac_reset(&conn->prf_space->s2n_hmac));
+    RESULT_GUARD_POSIX(s2n_hmac_wipe(&conn->prf_space->s2n_hmac));
 
     return S2N_RESULT_OK;
 }
