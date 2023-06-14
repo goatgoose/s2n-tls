@@ -422,10 +422,10 @@ int s2n_libcrypto_hmac_update(struct s2n_hmac_state *state, const void *in, uint
     POSIX_ENSURE_REF(in);
 
     POSIX_GUARD_OSSL(HMAC_Update(state->ctx, (const uint8_t *) in, (size_t) size), S2N_ERR_HMAC);
-
-    //printf("num: %d\n", state->ctx->md_ctx.sha1.num);
-    //printf("Nh: %d\n", state->ctx->md_ctx.sha1.Nh);
-    //printf("Nl: %d\n", state->ctx->md_ctx.sha1.Nl);
+//
+//    //printf("num: %d\n", state->ctx->md_ctx.sha1.num);
+//    //printf("Nh: %d\n", state->ctx->md_ctx.sha1.Nh);
+//    //printf("Nl: %d\n", state->ctx->md_ctx.sha1.Nl);
 
     return S2N_SUCCESS;
 }
@@ -458,7 +458,17 @@ int s2n_libcrypto_hmac_free(struct s2n_hmac_state *state)
 int s2n_libcrypto_hmac_reset(struct s2n_hmac_state *state)
 {
     POSIX_ENSURE_REF(state);
+
+    /* HMAC_Init_ex doesn't clear prior update hash state, so the HMAC ctx is flushed prior to
+     * initialization. The call to HMAC_Final will fail if update was not previously called, so the
+     * return value is ignored.
+     */
+    uint8_t out[EVP_MAX_MD_SIZE] = { 0 };
+    unsigned int out_len = EVP_MAX_MD_SIZE;
+    HMAC_Final(state->ctx, out, &out_len);
+
     POSIX_GUARD_OSSL(HMAC_Init_ex(state->ctx, NULL, 0, NULL, NULL), S2N_ERR_HMAC_INIT);
+
     return S2N_SUCCESS;
 }
 
