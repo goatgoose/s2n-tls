@@ -13,26 +13,12 @@
  * permissions and limitations under the License.
  */
 
-#include "s2n_test.h"
-#include "tls/s2n_ktls.h"
+#pragma once
 
-#if defined(__linux__)
-    #include "linux/version.h"
-#endif
+#include "s2n.h"
 
-int main(int argc, char **argv)
-{
-    BEGIN_TEST();
-
-    /* kTLS feature probe */
-    {
-#if defined(__linux__)
-    /* kTLS support was first added to AL2 starting in 5.10.130. */
-    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 130))
-        EXPECT_TRUE(s2n_ktls_is_supported_on_platform());
-    #endif
-#endif
-    };
-
-    END_TEST();
-}
+int s2n_example_negotiate(struct s2n_connection *conn);
+int s2n_example_recv(struct s2n_connection *conn, uint8_t *buffer, size_t buffer_size);
+int s2n_example_recv_echo(struct s2n_connection *conn, uint8_t *buffer, size_t buffer_size);
+int s2n_example_send(struct s2n_connection *conn, uint8_t *data, size_t data_size);
+int s2n_example_sendv(struct s2n_connection *conn, uint8_t *data, size_t data_size);
