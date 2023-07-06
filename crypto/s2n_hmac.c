@@ -95,6 +95,37 @@ bool s2n_hmac_is_available(s2n_hmac_algorithm hmac_alg)
     return false;
 }
 
+S2N_RESULT s2n_hmac_md_from_alg(s2n_hmac_algorithm alg, const EVP_MD **md)
+{
+    RESULT_ENSURE_REF(md);
+
+    switch (alg) {
+        case S2N_HMAC_SSLv3_MD5:
+        case S2N_HMAC_MD5:
+            *md = EVP_md5();
+            break;
+        case S2N_HMAC_SSLv3_SHA1:
+        case S2N_HMAC_SHA1:
+            *md = EVP_sha1();
+            break;
+        case S2N_HMAC_SHA224:
+            *md = EVP_sha224();
+            break;
+        case S2N_HMAC_SHA256:
+            *md = EVP_sha256();
+            break;
+        case S2N_HMAC_SHA384:
+            *md = EVP_sha384();
+            break;
+        case S2N_HMAC_SHA512:
+            *md = EVP_sha512();
+            break;
+        default:
+            RESULT_BAIL(S2N_ERR_P_HASH_INVALID_ALGORITHM);
+    }
+    return S2N_RESULT_OK;
+}
+
 static int s2n_sslv3_mac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen)
 {
     for (int i = 0; i < state->xor_pad_size; i++) {
@@ -179,18 +210,19 @@ int s2n_hmac_hash_block_size(s2n_hmac_algorithm hmac_alg, uint16_t *block_size)
     return S2N_SUCCESS;
 }
 
-int s2n_hmac_new(struct s2n_hmac_state *state)
-{
-    POSIX_ENSURE_REF(state);
-    POSIX_GUARD(s2n_hash_new(&state->inner));
-    POSIX_GUARD(s2n_hash_new(&state->inner_just_key));
-    POSIX_GUARD(s2n_hash_new(&state->outer));
-    POSIX_GUARD(s2n_hash_new(&state->outer_just_key));
-    POSIX_POSTCONDITION(s2n_hmac_state_validate(state));
-    return S2N_SUCCESS;
-}
+struct s2n_hmac_impl {
+    S2N_RESULT (*validate)(struct s2n_hmac_state *state);
+    S2N_RESULT (*new)(struct s2n_hmac_state *state);
+    S2N_RESULT (*init)(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+    S2N_RESULT (*update)(struct s2n_hmac_state *state, const void *data, uint32_t size);
+    S2N_RESULT (*digest)(struct s2n_hmac_state *state, void *digest, uint32_t size);
+    S2N_RESULT (*free)(struct s2n_hmac_state *state);
+    S2N_RESULT (*reset)(struct s2n_hmac_state *state);
+    S2N_RESULT (*copy)(struct s2n_hmac_state *to, struct s2n_hmac_state *from);
+    S2N_RESULT (*wipe)(struct s2n_hmac_state *state);
+};
 
-S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
+static S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
     RESULT_GUARD(s2n_hash_state_validate(&state->inner));
@@ -200,53 +232,62 @@ S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
     return S2N_RESULT_OK;
 }
 
-int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen)
+static S2N_RESULT s2n_custom_hmac_new(struct s2n_hmac_state *state)
 {
-    POSIX_ENSURE_REF(state);
-    if (!s2n_hmac_is_available(alg)) {
-        /* Prevent hmacs from being used if they are not available. */
-        POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
-    }
+    RESULT_ENSURE_REF(state);
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner_just_key));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer_just_key));
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
+{
+    RESULT_ENSURE_REF(state);
+
+    /* Prevent hmacs from being used if they are not available. */
+    RESULT_ENSURE(s2n_hmac_is_available(alg), S2N_ERR_HMAC_INVALID_ALGORITHM);
 
     state->alg = alg;
-    POSIX_GUARD(s2n_hmac_hash_block_size(alg, &state->hash_block_size));
+    RESULT_GUARD_POSIX(s2n_hmac_hash_block_size(alg, &state->hash_block_size));
     state->currently_in_hash_block = 0;
-    POSIX_GUARD(s2n_hmac_xor_pad_size(alg, &state->xor_pad_size));
-    POSIX_GUARD(s2n_hmac_digest_size(alg, &state->digest_size));
+    RESULT_GUARD_POSIX(s2n_hmac_xor_pad_size(alg, &state->xor_pad_size));
+    RESULT_GUARD_POSIX(s2n_hmac_digest_size(alg, &state->digest_size));
 
-    POSIX_ENSURE_GTE(sizeof(state->xor_pad), state->xor_pad_size);
-    POSIX_ENSURE_GTE(sizeof(state->digest_pad), state->digest_size);
+    RESULT_ENSURE_GTE(sizeof(state->xor_pad), state->xor_pad_size);
+    RESULT_ENSURE_GTE(sizeof(state->digest_pad), state->digest_size);
     /* key needs to be as large as the biggest block size */
-    POSIX_ENSURE_GTE(sizeof(state->xor_pad), state->hash_block_size);
+    RESULT_ENSURE_GTE(sizeof(state->xor_pad), state->hash_block_size);
 
-    s2n_hash_algorithm hash_alg;
-    POSIX_GUARD(s2n_hmac_hash_alg(alg, &hash_alg));
+    s2n_hash_algorithm hash_alg = S2N_HASH_NONE;
+    RESULT_GUARD_POSIX(s2n_hmac_hash_alg(alg, &hash_alg));
 
-    POSIX_GUARD(s2n_hash_init(&state->inner, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->inner_just_key, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->outer, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->outer_just_key, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->inner, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->inner_just_key, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->outer, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->outer_just_key, hash_alg));
 
     if (alg == S2N_HMAC_SSLv3_SHA1 || alg == S2N_HMAC_SSLv3_MD5) {
-        POSIX_GUARD(s2n_sslv3_mac_init(state, alg, key, klen));
+        RESULT_GUARD_POSIX(s2n_sslv3_mac_init(state, alg, key, key_len));
     } else {
-        POSIX_GUARD(s2n_tls_hmac_init(state, alg, key, klen));
+        RESULT_GUARD_POSIX(s2n_tls_hmac_init(state, alg, key, key_len));
     }
 
     /* Once we have produced inner_just_key and outer_just_key, don't need the key material in xor_pad, so wipe it.
      * Since xor_pad is used as a source of bytes in s2n_hmac_digest_two_compression_rounds,
-     * this also prevents uninitilized bytes being used.
+     * this also prevents uninitialized bytes being used.
      */
     memset(&state->xor_pad, 0, sizeof(state->xor_pad));
-    POSIX_GUARD(s2n_hmac_reset(state));
+    RESULT_GUARD_POSIX(s2n_hmac_reset(state));
 
-    return S2N_SUCCESS;
+    return S2N_RESULT_OK;
 }
 
-int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
+static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
-    POSIX_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
+    RESULT_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
+
     /* Keep track of how much of the current hash block is full
      *
      * Why the 4294949760 constant in this code? 4294949760 is the highest 32-bit
@@ -269,22 +310,152 @@ int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
      * smaller number of cycles if the input is "small".
      */
     const uint32_t HIGHEST_32_BIT = 4294949760;
-    POSIX_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
+    RESULT_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
     uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
-    POSIX_GUARD(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
+    RESULT_GUARD_POSIX(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
     state->currently_in_hash_block %= state->hash_block_size;
 
-    return s2n_hash_update(&state->inner, in, size);
+    RESULT_GUARD_POSIX(s2n_hash_update(&state->inner, in, size));
+
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
+{
+    RESULT_GUARD_POSIX(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
+    RESULT_GUARD_POSIX(s2n_hash_copy(&state->outer, &state->outer_just_key));
+    RESULT_GUARD_POSIX(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
+
+    RESULT_GUARD_POSIX(s2n_hash_digest(&state->outer, out, size));
+
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_free(struct s2n_hmac_state *state)
+{
+    if (state) {
+        RESULT_GUARD_POSIX(s2n_hash_free(&state->inner));
+        RESULT_GUARD_POSIX(s2n_hash_free(&state->inner_just_key));
+        RESULT_GUARD_POSIX(s2n_hash_free(&state->outer));
+        RESULT_GUARD_POSIX(s2n_hash_free(&state->outer_just_key));
+    }
+
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_reset(struct s2n_hmac_state *state)
+{
+    RESULT_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
+
+    RESULT_GUARD_POSIX(s2n_hash_copy(&state->inner, &state->inner_just_key));
+
+    uint64_t bytes_in_hash = 0;
+    RESULT_GUARD_POSIX(s2n_hash_get_currently_in_hash_total(&state->inner, &bytes_in_hash));
+    bytes_in_hash %= state->hash_block_size;
+    RESULT_ENSURE(bytes_in_hash <= UINT32_MAX, S2N_ERR_INTEGER_OVERFLOW);
+
+    /* The length of the key is not private, so don't need to do tricky math here */
+    state->currently_in_hash_block = bytes_in_hash;
+
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
+{
+    /* memcpy cannot be used on s2n_hmac_state as the underlying s2n_hash implementation's
+     * copy must be used. This is enforced when the s2n_hash implementation is s2n_evp_hash.
+     */
+    to->alg = from->alg;
+    to->hash_block_size = from->hash_block_size;
+    to->currently_in_hash_block = from->currently_in_hash_block;
+    to->xor_pad_size = from->xor_pad_size;
+    to->digest_size = from->digest_size;
+
+    RESULT_GUARD_POSIX(s2n_hash_copy(&to->inner, &from->inner));
+    RESULT_GUARD_POSIX(s2n_hash_copy(&to->inner_just_key, &from->inner_just_key));
+    RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer, &from->outer));
+    RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer_just_key, &from->outer_just_key));
+
+    RESULT_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
+    RESULT_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
+
+    return S2N_RESULT_OK;
+}
+
+const struct s2n_hmac_impl s2n_custom_hmac_impl = {
+    .validate = &s2n_custom_hmac_state_validate,
+    .new = &s2n_custom_hmac_new,
+    .init = &s2n_custom_hmac_init,
+    .update = &s2n_custom_hmac_update,
+    .digest = &s2n_custom_hmac_digest,
+    .free = &s2n_custom_hmac_free,
+    .reset = &s2n_custom_hmac_reset,
+    .copy = &s2n_custom_hmac_copy,
+};
+
+const struct s2n_hmac_impl *s2n_hmac_get_impl()
+{
+    return &s2n_custom_hmac_impl;
+}
+
+S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
+{
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    RESULT_ENSURE_REF(hmac);
+
+    RESULT_GUARD(hmac->validate(state));
+
+    return S2N_RESULT_OK;
+}
+
+int s2n_hmac_new(struct s2n_hmac_state *state)
+{
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->new(state));
+    POSIX_GUARD_RESULT(hmac->validate(state));
+
+    return S2N_SUCCESS;
+}
+
+int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
+{
+    POSIX_ENSURE(S2N_IMPLIES(key_len > 0, key != NULL), S2N_ERR_SAFETY);
+
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->validate(state));
+    POSIX_GUARD_RESULT(hmac->init(state, alg, key, key_len));
+
+    return S2N_SUCCESS;
+}
+
+int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
+{
+    POSIX_ENSURE(S2N_IMPLIES(size > 0, in != NULL), S2N_ERR_SAFETY);
+
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->validate(state));
+    POSIX_GUARD_RESULT(hmac->update(state, in, size));
+
+    return S2N_SUCCESS;
 }
 
 int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
-    POSIX_GUARD(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
-    POSIX_GUARD(s2n_hash_copy(&state->outer, &state->outer_just_key));
-    POSIX_GUARD(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
+    POSIX_ENSURE(S2N_IMPLIES(size > 0, out != NULL), S2N_ERR_SAFETY);
 
-    return s2n_hash_digest(&state->outer, out, size);
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->validate(state));
+    POSIX_GUARD_RESULT(hmac->digest(state, out, size));
+
+    return S2N_SUCCESS;
 }
 
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size)
@@ -312,64 +483,50 @@ int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *o
     return s2n_hash_update(&state->inner, state->xor_pad, state->hash_block_size);
 }
 
+int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len)
+{
+    POSIX_ENSURE_REF(a);
+    POSIX_ENSURE_REF(b);
+
+    return S2N_SUCCESS - !s2n_constant_time_equals(a, b, len);
+}
+
 int s2n_hmac_free(struct s2n_hmac_state *state)
 {
-    if (state) {
-        POSIX_GUARD(s2n_hash_free(&state->inner));
-        POSIX_GUARD(s2n_hash_free(&state->inner_just_key));
-        POSIX_GUARD(s2n_hash_free(&state->outer));
-        POSIX_GUARD(s2n_hash_free(&state->outer_just_key));
-    }
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
+
+    POSIX_GUARD_RESULT(hmac->free(state));
 
     return S2N_SUCCESS;
 }
 
 int s2n_hmac_reset(struct s2n_hmac_state *state)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
-    POSIX_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
-    POSIX_GUARD(s2n_hash_copy(&state->inner, &state->inner_just_key));
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
 
-    uint64_t bytes_in_hash;
-    POSIX_GUARD(s2n_hash_get_currently_in_hash_total(&state->inner, &bytes_in_hash));
-    bytes_in_hash %= state->hash_block_size;
-    POSIX_ENSURE(bytes_in_hash <= UINT32_MAX, S2N_ERR_INTEGER_OVERFLOW);
-    /* The length of the key is not private, so don't need to do tricky math here */
-    state->currently_in_hash_block = bytes_in_hash;
+    POSIX_GUARD_RESULT(hmac->validate(state));
+    POSIX_GUARD_RESULT(hmac->reset(state));
+
     return S2N_SUCCESS;
-}
-
-int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len)
-{
-    return S2N_SUCCESS - !s2n_constant_time_equals(a, b, len);
 }
 
 int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(to));
-    POSIX_PRECONDITION(s2n_hmac_state_validate(from));
-    /* memcpy cannot be used on s2n_hmac_state as the underlying s2n_hash implementation's
-     * copy must be used. This is enforced when the s2n_hash implementation is s2n_evp_hash.
-     */
-    to->alg = from->alg;
-    to->hash_block_size = from->hash_block_size;
-    to->currently_in_hash_block = from->currently_in_hash_block;
-    to->xor_pad_size = from->xor_pad_size;
-    to->digest_size = from->digest_size;
+    const struct s2n_hmac_impl *hmac = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac);
 
-    POSIX_GUARD(s2n_hash_copy(&to->inner, &from->inner));
-    POSIX_GUARD(s2n_hash_copy(&to->inner_just_key, &from->inner_just_key));
-    POSIX_GUARD(s2n_hash_copy(&to->outer, &from->outer));
-    POSIX_GUARD(s2n_hash_copy(&to->outer_just_key, &from->outer_just_key));
+    POSIX_GUARD_RESULT(hmac->validate(to));
+    POSIX_GUARD_RESULT(hmac->validate(from));
 
+    POSIX_GUARD_RESULT(hmac->copy(to, from));
 
-    POSIX_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
-    POSIX_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
-    POSIX_POSTCONDITION(s2n_hmac_state_validate(to));
-    POSIX_POSTCONDITION(s2n_hmac_state_validate(from));
+    POSIX_GUARD_RESULT(hmac->validate(to));
+    POSIX_GUARD_RESULT(hmac->validate(from));
+
     return S2N_SUCCESS;
 }
-
 
 /* Preserve the handlers for hmac state pointers to avoid re-allocation
  * Only valid if the HMAC is in EVP mode
@@ -395,35 +552,4 @@ int s2n_hmac_restore_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s
     hmac->outer_just_key.digest.high_level = backup->outer_just_key;
     POSIX_POSTCONDITION(s2n_hmac_state_validate(hmac));
     return S2N_SUCCESS;
-}
-
-S2N_RESULT s2n_hmac_md_from_alg(s2n_hmac_algorithm alg, const EVP_MD **md)
-{
-    RESULT_ENSURE_REF(md);
-
-    switch (alg) {
-        case S2N_HMAC_SSLv3_MD5:
-        case S2N_HMAC_MD5:
-            *md = EVP_md5();
-            break;
-        case S2N_HMAC_SSLv3_SHA1:
-        case S2N_HMAC_SHA1:
-            *md = EVP_sha1();
-            break;
-        case S2N_HMAC_SHA224:
-            *md = EVP_sha224();
-            break;
-        case S2N_HMAC_SHA256:
-            *md = EVP_sha256();
-            break;
-        case S2N_HMAC_SHA384:
-            *md = EVP_sha384();
-            break;
-        case S2N_HMAC_SHA512:
-            *md = EVP_sha512();
-            break;
-        default:
-            RESULT_BAIL(S2N_ERR_P_HASH_INVALID_ALGORITHM);
-    }
-    return S2N_RESULT_OK;
 }
