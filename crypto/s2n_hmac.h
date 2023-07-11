@@ -65,10 +65,10 @@ struct s2n_hmac_state {
     s2n_hmac_algorithm alg;
     s2n_hmac_implementation_type impl_type;
 
-    union {
+    struct {
         struct s2n_custom_hmac_state custom;
         struct s2n_libcrypto_hmac_state libcrypto;
-    } internal_state;
+    } impl_state;
 };
 
 struct s2n_hmac_evp_backup {
@@ -85,10 +85,12 @@ int s2n_hash_hmac_alg(s2n_hash_algorithm hash_alg, s2n_hmac_algorithm *out);
 
 int s2n_hmac_new(struct s2n_hmac_state *hmac);
 S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *hmac);
+int s2n_hmac_set_implementation(struct s2n_hmac_state *hmac, s2n_hmac_implementation_type impl_type);
 int s2n_hmac_init(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
 int s2n_hmac_update(struct s2n_hmac_state *hmac, const void *in, uint32_t size);
 int s2n_hmac_digest(struct s2n_hmac_state *hmac, void *out, uint32_t size);
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *hmac, void *out, uint32_t size);
+int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *hmac, uint32_t *currently_in_hash_block);
 int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len);
 int s2n_hmac_free(struct s2n_hmac_state *hmac);
 int s2n_hmac_reset(struct s2n_hmac_state *hmac);
