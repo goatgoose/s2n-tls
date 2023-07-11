@@ -1023,7 +1023,10 @@ int s2n_prf_key_expansion(struct s2n_connection *conn)
     POSIX_GUARD(cipher->init(&conn->secure->server_key));
 
     /* Seed the client MAC */
-    POSIX_GUARD(s2n_hmac_reset(&conn->secure->client_record_mac));
+    POSIX_GUARD(s2n_hmac_wipe(&conn->secure->client_record_mac));
+    if (conn->mode == S2N_SERVER && cipher->type == S2N_CBC) {
+        POSIX_GUARD(s2n_hmac_set_implementation(&conn->secure->client_record_mac, S2N_HMAC_CUSTOM_IMPL));
+    }
     POSIX_GUARD(s2n_hmac_init(
             &conn->secure->client_record_mac,
             cipher_suite->record_alg->hmac_alg,
@@ -1031,7 +1034,10 @@ int s2n_prf_key_expansion(struct s2n_connection *conn)
             key_material.client_mac.size));
 
     /* Seed the server MAC */
-    POSIX_GUARD(s2n_hmac_reset(&conn->secure->server_record_mac));
+    POSIX_GUARD(s2n_hmac_wipe(&conn->secure->server_record_mac));
+    if (conn->mode == S2N_CLIENT && cipher->type == S2N_CBC) {
+        POSIX_GUARD(s2n_hmac_set_implementation(&conn->secure->server_record_mac, S2N_HMAC_CUSTOM_IMPL));
+    }
     POSIX_GUARD(s2n_hmac_init(
             &conn->secure->server_record_mac,
             conn->secure->cipher_suite->record_alg->hmac_alg,

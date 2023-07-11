@@ -216,6 +216,10 @@ int main(int argc, char **argv)
         EXPECT_FAILURE_WITH_ERRNO(s2n_record_parse(conn), S2N_ERR_BAD_MESSAGE);
     }
 
+    /* The custom HMAC implementation is needed to verify the CBC record for mock_block_cipher_suite */
+    EXPECT_SUCCESS(s2n_hmac_wipe(&conn->initial->client_record_mac));
+    EXPECT_SUCCESS(s2n_hmac_set_implementation(&conn->initial->client_record_mac, S2N_HMAC_CUSTOM_IMPL));
+
     /* Test a mock block cipher with a mac - in TLS1.0 mode */
     EXPECT_SUCCESS(s2n_hmac_init(&conn->initial->client_record_mac, S2N_HMAC_SHA1, mac_key, sizeof(mac_key)));
     EXPECT_SUCCESS(s2n_hmac_init(&conn->initial->server_record_mac, S2N_HMAC_SHA1, mac_key, sizeof(mac_key)));
@@ -286,6 +290,10 @@ int main(int argc, char **argv)
         EXPECT_EQUAL(fragment_length, predicted_length);
     }
 
+    /* The custom HMAC implementation is needed to verify the CBC record for mock_block_cipher_suite */
+    EXPECT_SUCCESS(s2n_hmac_wipe(&conn->initial->client_record_mac));
+    EXPECT_SUCCESS(s2n_hmac_set_implementation(&conn->initial->client_record_mac, S2N_HMAC_CUSTOM_IMPL));
+
     /* Test a mock block cipher with a mac - in TLS1.1+ mode */
     EXPECT_SUCCESS(s2n_hmac_init(&conn->initial->client_record_mac, S2N_HMAC_SHA1, mac_key, sizeof(mac_key)));
     EXPECT_SUCCESS(s2n_hmac_init(&conn->initial->server_record_mac, S2N_HMAC_SHA1, mac_key, sizeof(mac_key)));
@@ -353,6 +361,8 @@ int main(int argc, char **argv)
         EXPECT_EQUAL(content_type, TLS_APPLICATION_DATA);
         EXPECT_EQUAL(fragment_length, predicted_length);
     }
+
+    EXPECT_SUCCESS(s2n_hmac_wipe(&conn->initial->client_record_mac));
 
     /* Test TLS record limit */
     struct s2n_blob empty_blob = { 0 };

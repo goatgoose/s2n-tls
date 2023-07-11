@@ -145,6 +145,8 @@ static const char *no_such_error = "Internal s2n error";
     ERR_ENTRY(S2N_ERR_P_HASH_FINAL_FAILED, "error creating p_hash digest") \
     ERR_ENTRY(S2N_ERR_P_HASH_WIPE_FAILED, "error wiping p_hash") \
     ERR_ENTRY(S2N_ERR_HMAC_INVALID_ALGORITHM, "invalid HMAC algorithm") \
+    ERR_ENTRY(S2N_ERR_HMAC_INIT, "error initializing HMAC state" ) \
+    ERR_ENTRY(S2N_ERR_HMAC, "error calculating HMAC" ) \
     ERR_ENTRY(S2N_ERR_HKDF_OUTPUT_SIZE, "invalid HKDF output size") \
     ERR_ENTRY(S2N_ERR_HKDF, "error generating HKDF output") \
     ERR_ENTRY(S2N_ERR_ALERT_PRESENT, "TLS alert is already pending") \
