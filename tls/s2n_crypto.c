@@ -56,8 +56,6 @@ S2N_RESULT s2n_crypto_parameters_wipe(struct s2n_crypto_parameters *params)
     /* Wipe the hmacs for reuse */
     struct s2n_hmac_state client_state = params->client_record_mac;
     struct s2n_hmac_state server_state = params->server_record_mac;
-    RESULT_GUARD_POSIX(s2n_hmac_wipe(&client_state));
-    RESULT_GUARD_POSIX(s2n_hmac_wipe(&server_state));
     RESULT_GUARD_POSIX(s2n_hmac_init(&client_state, S2N_HMAC_NONE, NULL, 0));
     RESULT_GUARD_POSIX(s2n_hmac_init(&server_state, S2N_HMAC_NONE, NULL, 0));
 

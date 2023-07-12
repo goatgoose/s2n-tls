@@ -580,43 +580,59 @@ int s2n_hmac_new(struct s2n_hmac_state *hmac)
     return S2N_SUCCESS;
 }
 
-int s2n_hmac_set_implementation(struct s2n_hmac_state *hmac, s2n_hmac_implementation_type impl_type)
+static S2N_RESULT s2n_hmac_init_impl(struct s2n_hmac_state *hmac, s2n_hmac_implementation_type impl_type, s2n_hmac_algorithm alg,
+        const void *key, uint32_t key_len)
 {
-    POSIX_ENSURE_REF(hmac);
+    RESULT_ENSURE_REF(hmac);
+    RESULT_ENSURE(S2N_IMPLIES(key_len > 0, key != NULL), S2N_ERR_SAFETY);
+    RESULT_ENSURE_NE(impl_type, S2N_HMAC_UNDEFINED_IMPL);
 
-    /* The HMAC implementation must be set before calling s2n_hmac_init */
-    POSIX_ENSURE_EQ(hmac->impl_type, S2N_HMAC_UNDEFINED_IMPL);
+    /* Wipe the previous HMAC state if the implementation type changed */
+    if (hmac->impl_type != S2N_HMAC_UNDEFINED_IMPL && hmac->impl_type != impl_type) {
+        RESULT_GUARD_POSIX(s2n_hmac_wipe(hmac));
+    }
 
     hmac->impl_type = impl_type;
+    hmac->alg = alg;
 
-    return S2N_SUCCESS;
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl(hmac);
+    RESULT_ENSURE_REF(impl);
+
+    RESULT_GUARD(impl->validate(hmac));
+    RESULT_GUARD(impl->init(hmac, alg, key, key_len));
+
+    return S2N_RESULT_OK;
 }
 
 int s2n_hmac_init(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
     POSIX_ENSURE_REF(hmac);
-    POSIX_ENSURE(S2N_IMPLIES(key_len > 0, key != NULL), S2N_ERR_SAFETY);
 
-    /* If the HMAC implementation wasn't specified with s2n_hmac_set_implementation prior to
-     * calling s2n_hmac_init, automatically select the implementation depending on the FIPS mode.
-     * By default, the s2n-tls custom implementation is used. If s2n-tls is operating in FIPS mode,
-     * the libcrypto implementation is used instead.
+    s2n_hmac_implementation_type impl_type = S2N_HMAC_CUSTOM_IMPL;
+
+    /* By default, s2n-tls uses a custom HMAC implementation. If s2n-tls is operating in FIPS mode, the
+     * FIPS-validated libcrypto implementation is used instead.
      */
-    if (hmac->impl_type == S2N_HMAC_UNDEFINED_IMPL) {
-        if (s2n_is_in_fips_mode()) {
-            hmac->impl_type = S2N_HMAC_LIBCRYPTO_IMPL;
-        } else {
-            hmac->impl_type = S2N_HMAC_CUSTOM_IMPL;
-        }
+    if (s2n_is_in_fips_mode()) {
+        impl_type = S2N_HMAC_LIBCRYPTO_IMPL;
     }
 
-    hmac->alg = alg;
+    POSIX_GUARD_RESULT(s2n_hmac_init_impl(hmac, impl_type, alg, key, key_len));
 
-    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl(hmac);
-    POSIX_ENSURE_REF(impl);
+    return S2N_SUCCESS;
+}
 
-    POSIX_GUARD_RESULT(impl->validate(hmac));
-    POSIX_GUARD_RESULT(impl->init(hmac, alg, key, key_len));
+int s2n_hmac_init_cbc(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
+{
+    POSIX_ENSURE_REF(hmac);
+
+    /* When validating CBC records, s2n-tls uses internal hash information to mitigate lucky 13
+     * attacks. This internal hash information is only tracked when using the custom HMAC
+     * implementation, so this implementation is always used when validating CBC records.
+     */
+    s2n_hmac_implementation_type impl_type = S2N_HMAC_CUSTOM_IMPL;
+
+    POSIX_GUARD_RESULT(s2n_hmac_init_impl(hmac, impl_type, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
@@ -765,10 +781,6 @@ int s2n_hmac_copy(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_fr
 int s2n_hmac_wipe(struct s2n_hmac_state *hmac)
 {
     POSIX_ENSURE_REF(hmac);
-
-    if (hmac->impl_type == S2N_HMAC_UNDEFINED_IMPL) {
-        return S2N_SUCCESS;
-    }
 
     const struct s2n_hmac_impl *impl = s2n_hmac_get_impl(hmac);
     POSIX_ENSURE_REF(impl);
