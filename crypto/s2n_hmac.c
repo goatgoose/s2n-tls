@@ -203,9 +203,6 @@ static S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
 
 static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
-    /* Prevent hmacs from being used if they are not available. */
-    RESULT_ENSURE(s2n_hmac_is_available(alg), S2N_ERR_HMAC_INVALID_ALGORITHM);
-
     state->alg = alg;
     RESULT_GUARD_POSIX(s2n_hmac_hash_block_size(alg, &state->hash_block_size));
     state->currently_in_hash_block = 0;
@@ -368,6 +365,11 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
 int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
     POSIX_ENSURE_REF(state);
+
+    if (!s2n_hmac_is_available(alg)) {
+        /* Prevent hmacs from being used if they are not available. */
+        POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
+    }
 
     const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
     POSIX_ENSURE_REF(impl);
