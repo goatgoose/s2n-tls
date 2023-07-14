@@ -189,6 +189,18 @@ struct s2n_hmac_impl {
     S2N_RESULT (*wipe)(struct s2n_hmac_state *state);
 };
 
+static S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_hmac_state *state)
+{
+    RESULT_ENSURE_REF(state);
+
+    RESULT_GUARD(s2n_hash_state_validate(&state->inner));
+    RESULT_GUARD(s2n_hash_state_validate(&state->inner_just_key));
+    RESULT_GUARD(s2n_hash_state_validate(&state->outer));
+    RESULT_GUARD(s2n_hash_state_validate(&state->outer_just_key));
+
+    return S2N_RESULT_OK;
+}
+
 static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
     state->alg = alg;
@@ -227,12 +239,25 @@ static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_al
 }
 
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
+        .validate = &s2n_custom_hmac_state_validate,
         .init = &s2n_custom_hmac_init,
 };
 
 const struct s2n_hmac_impl *s2n_hmac_get_impl()
 {
     return &s2n_custom_hmac_impl;
+}
+
+S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
+{
+    RESULT_ENSURE_REF(state);
+
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    RESULT_ENSURE_REF(impl);
+
+    RESULT_GUARD(impl->validate(state));
+
+    return S2N_RESULT_OK;
 }
 
 int s2n_hmac_new(struct s2n_hmac_state *state)
@@ -244,16 +269,6 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
     POSIX_GUARD(s2n_hash_new(&state->outer_just_key));
     POSIX_POSTCONDITION(s2n_hmac_state_validate(state));
     return S2N_SUCCESS;
-}
-
-S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
-{
-    RESULT_ENSURE_REF(state);
-    RESULT_GUARD(s2n_hash_state_validate(&state->inner));
-    RESULT_GUARD(s2n_hash_state_validate(&state->inner_just_key));
-    RESULT_GUARD(s2n_hash_state_validate(&state->outer));
-    RESULT_GUARD(s2n_hash_state_validate(&state->outer_just_key));
-    return S2N_RESULT_OK;
 }
 
 int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
@@ -268,7 +283,7 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
     const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
     POSIX_ENSURE_REF(impl);
 
-    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
+    POSIX_GUARD_RESULT(impl->validate(state));
     POSIX_GUARD_RESULT(impl->init(state, alg, key, key_len));
 
     return S2N_SUCCESS;
