@@ -238,9 +238,58 @@ static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_al
     return S2N_RESULT_OK;
 }
 
+static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
+{
+    RESULT_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
+
+    /* Keep track of how much of the current hash block is full
+     *
+     * Why the 4294949760 constant in this code? 4294949760 is the highest 32-bit
+     * value that is congruent to 0 modulo all of our HMAC block sizes, that is also
+     * at least 16k smaller than 2^32. It therefore has no effect on the mathematical
+     * result, and no valid record size can cause it to overflow.
+     *
+     * The value was found with the following python code;
+     *
+     * x = (2 ** 32) - (2 ** 14)
+     * while True:
+     *   if x % 40 | x % 48 | x % 64 | x % 128 == 0:
+     *     break
+     *   x -= 1
+     * print x
+     *
+     * What it does do however is ensure that the mod operation takes a
+     * constant number of instruction cycles, regardless of the size of the
+     * input. On some platforms, including Intel, the operation can take a
+     * smaller number of cycles if the input is "small".
+     */
+    const uint32_t HIGHEST_32_BIT = 4294949760;
+    RESULT_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
+    uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
+    RESULT_GUARD_POSIX(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
+    state->currently_in_hash_block %= state->hash_block_size;
+
+    RESULT_GUARD_POSIX(s2n_hash_update(&state->inner, in, size));
+
+    return S2N_RESULT_OK;
+}
+
+static S2N_RESULT s2n_custom_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
+{
+    RESULT_GUARD_POSIX(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
+    RESULT_GUARD_POSIX(s2n_hash_copy(&state->outer, &state->outer_just_key));
+    RESULT_GUARD_POSIX(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
+
+    RESULT_GUARD_POSIX(s2n_hash_digest(&state->outer, out, size));
+
+    return S2N_RESULT_OK;
+}
+
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
         .validate = &s2n_custom_hmac_state_validate,
         .init = &s2n_custom_hmac_init,
+        .update = &s2n_custom_hmac_update,
+        .digest = &s2n_custom_hmac_digest,
 };
 
 const struct s2n_hmac_impl *s2n_hmac_get_impl()
@@ -291,46 +340,28 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
 
 int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
-    POSIX_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
-    /* Keep track of how much of the current hash block is full
-     *
-     * Why the 4294949760 constant in this code? 4294949760 is the highest 32-bit
-     * value that is congruent to 0 modulo all of our HMAC block sizes, that is also
-     * at least 16k smaller than 2^32. It therefore has no effect on the mathematical
-     * result, and no valid record size can cause it to overflow.
-     *
-     * The value was found with the following python code;
-     *
-     * x = (2 ** 32) - (2 ** 14)
-     * while True:
-     *   if x % 40 | x % 48 | x % 64 | x % 128 == 0:
-     *     break
-     *   x -= 1
-     * print x
-     *
-     * What it does do however is ensure that the mod operation takes a
-     * constant number of instruction cycles, regardless of the size of the
-     * input. On some platforms, including Intel, the operation can take a
-     * smaller number of cycles if the input is "small".
-     */
-    const uint32_t HIGHEST_32_BIT = 4294949760;
-    POSIX_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
-    uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
-    POSIX_GUARD(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
-    state->currently_in_hash_block %= state->hash_block_size;
+    POSIX_ENSURE_REF(state);
 
-    return s2n_hash_update(&state->inner, in, size);
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(impl);
+
+    POSIX_GUARD_RESULT(impl->validate(state));
+    POSIX_GUARD_RESULT(impl->update(state, in, size));
+
+    return S2N_SUCCESS;
 }
 
 int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
 {
-    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
-    POSIX_GUARD(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
-    POSIX_GUARD(s2n_hash_copy(&state->outer, &state->outer_just_key));
-    POSIX_GUARD(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
+    POSIX_ENSURE_REF(state);
 
-    return s2n_hash_digest(&state->outer, out, size);
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(impl);
+
+    POSIX_GUARD_RESULT(impl->validate(state));
+    POSIX_GUARD_RESULT(impl->digest(state, out, size));
+
+    return S2N_SUCCESS;
 }
 
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size)
