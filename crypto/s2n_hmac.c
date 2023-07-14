@@ -179,6 +179,62 @@ int s2n_hmac_hash_block_size(s2n_hmac_algorithm hmac_alg, uint16_t *block_size)
     return S2N_SUCCESS;
 }
 
+struct s2n_hmac_impl {
+    S2N_RESULT (*validate)(struct s2n_hmac_state *hmac);
+    S2N_RESULT (*init)(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+    S2N_RESULT (*update)(struct s2n_hmac_state *hmac, const void *data, uint32_t size);
+    S2N_RESULT (*digest)(struct s2n_hmac_state *hmac, void *digest, uint32_t size);
+    S2N_RESULT (*reset)(struct s2n_hmac_state *hmac);
+    S2N_RESULT (*copy)(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_from);
+    S2N_RESULT (*wipe)(struct s2n_hmac_state *state);
+};
+
+static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
+{
+    state->alg = alg;
+    RESULT_GUARD_POSIX(s2n_hmac_hash_block_size(alg, &state->hash_block_size));
+    state->currently_in_hash_block = 0;
+    RESULT_GUARD_POSIX(s2n_hmac_xor_pad_size(alg, &state->xor_pad_size));
+    RESULT_GUARD_POSIX(s2n_hmac_digest_size(alg, &state->digest_size));
+
+    RESULT_ENSURE_GTE(sizeof(state->xor_pad), state->xor_pad_size);
+    RESULT_ENSURE_GTE(sizeof(state->digest_pad), state->digest_size);
+    /* key needs to be as large as the biggest block size */
+    RESULT_ENSURE_GTE(sizeof(state->xor_pad), state->hash_block_size);
+
+    s2n_hash_algorithm hash_alg = S2N_HASH_NONE;
+    RESULT_GUARD_POSIX(s2n_hmac_hash_alg(alg, &hash_alg));
+
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->inner, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->inner_just_key, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->outer, hash_alg));
+    RESULT_GUARD_POSIX(s2n_hash_init(&state->outer_just_key, hash_alg));
+
+    if (alg == S2N_HMAC_SSLv3_SHA1 || alg == S2N_HMAC_SSLv3_MD5) {
+        RESULT_GUARD_POSIX(s2n_sslv3_mac_init(state, alg, key, key_len));
+    } else {
+        RESULT_GUARD_POSIX(s2n_tls_hmac_init(state, alg, key, key_len));
+    }
+
+    /* Once we have produced inner_just_key and outer_just_key, don't need the key material in xor_pad, so wipe it.
+     * Since xor_pad is used as a source of bytes in s2n_hmac_digest_two_compression_rounds,
+     * this also prevents uninitialized bytes being used.
+     */
+    memset(&state->xor_pad, 0, sizeof(state->xor_pad));
+    RESULT_GUARD_POSIX(s2n_hmac_reset(state));
+
+    return S2N_RESULT_OK;
+}
+
+const struct s2n_hmac_impl s2n_custom_hmac_impl = {
+        .init = &s2n_custom_hmac_init,
+};
+
+const struct s2n_hmac_impl *s2n_hmac_get_impl()
+{
+    return &s2n_custom_hmac_impl;
+}
+
 int s2n_hmac_new(struct s2n_hmac_state *state)
 {
     POSIX_ENSURE_REF(state);
@@ -200,45 +256,20 @@ S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
     return S2N_RESULT_OK;
 }
 
-int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen)
+int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
     POSIX_ENSURE_REF(state);
+
     if (!s2n_hmac_is_available(alg)) {
         /* Prevent hmacs from being used if they are not available. */
         POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
     }
 
-    state->alg = alg;
-    POSIX_GUARD(s2n_hmac_hash_block_size(alg, &state->hash_block_size));
-    state->currently_in_hash_block = 0;
-    POSIX_GUARD(s2n_hmac_xor_pad_size(alg, &state->xor_pad_size));
-    POSIX_GUARD(s2n_hmac_digest_size(alg, &state->digest_size));
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(impl);
 
-    POSIX_ENSURE_GTE(sizeof(state->xor_pad), state->xor_pad_size);
-    POSIX_ENSURE_GTE(sizeof(state->digest_pad), state->digest_size);
-    /* key needs to be as large as the biggest block size */
-    POSIX_ENSURE_GTE(sizeof(state->xor_pad), state->hash_block_size);
-
-    s2n_hash_algorithm hash_alg;
-    POSIX_GUARD(s2n_hmac_hash_alg(alg, &hash_alg));
-
-    POSIX_GUARD(s2n_hash_init(&state->inner, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->inner_just_key, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->outer, hash_alg));
-    POSIX_GUARD(s2n_hash_init(&state->outer_just_key, hash_alg));
-
-    if (alg == S2N_HMAC_SSLv3_SHA1 || alg == S2N_HMAC_SSLv3_MD5) {
-        POSIX_GUARD(s2n_sslv3_mac_init(state, alg, key, klen));
-    } else {
-        POSIX_GUARD(s2n_tls_hmac_init(state, alg, key, klen));
-    }
-
-    /* Once we have produced inner_just_key and outer_just_key, don't need the key material in xor_pad, so wipe it.
-     * Since xor_pad is used as a source of bytes in s2n_hmac_digest_two_compression_rounds,
-     * this also prevents uninitilized bytes being used.
-     */
-    memset(&state->xor_pad, 0, sizeof(state->xor_pad));
-    POSIX_GUARD(s2n_hmac_reset(state));
+    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
+    POSIX_GUARD_RESULT(impl->init(state, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
