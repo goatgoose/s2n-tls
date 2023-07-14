@@ -274,22 +274,10 @@ static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const voi
     return S2N_RESULT_OK;
 }
 
-static S2N_RESULT s2n_custom_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
-{
-    RESULT_GUARD_POSIX(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
-    RESULT_GUARD_POSIX(s2n_hash_copy(&state->outer, &state->outer_just_key));
-    RESULT_GUARD_POSIX(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
-
-    RESULT_GUARD_POSIX(s2n_hash_digest(&state->outer, out, size));
-
-    return S2N_RESULT_OK;
-}
-
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
         .validate = &s2n_custom_hmac_state_validate,
         .init = &s2n_custom_hmac_init,
         .update = &s2n_custom_hmac_update,
-        .digest = &s2n_custom_hmac_digest,
 };
 
 const struct s2n_hmac_impl *s2n_hmac_get_impl()
@@ -342,26 +330,23 @@ int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
     POSIX_ENSURE_REF(state);
 
-    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
-    POSIX_ENSURE_REF(impl);
+//    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+//    POSIX_ENSURE_REF(impl);
+//
 
-    POSIX_GUARD_RESULT(impl->validate(state));
-    POSIX_GUARD_RESULT(impl->update(state, in, size));
+    POSIX_GUARD_RESULT(s2n_custom_hmac_update(state, in, size));
 
     return S2N_SUCCESS;
 }
 
 int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size)
 {
-    POSIX_ENSURE_REF(state);
+    POSIX_PRECONDITION(s2n_hmac_state_validate(state));
+    POSIX_GUARD(s2n_hash_digest(&state->inner, state->digest_pad, state->digest_size));
+    POSIX_GUARD(s2n_hash_copy(&state->outer, &state->outer_just_key));
+    POSIX_GUARD(s2n_hash_update(&state->outer, state->digest_pad, state->digest_size));
 
-    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
-    POSIX_ENSURE_REF(impl);
-
-    POSIX_GUARD_RESULT(impl->validate(state));
-    POSIX_GUARD_RESULT(impl->digest(state, out, size));
-
-    return S2N_SUCCESS;
+    return s2n_hash_digest(&state->outer, out, size);
 }
 
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size)
