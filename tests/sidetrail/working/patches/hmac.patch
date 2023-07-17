@@ -5,10 +5,10 @@ index 3405781..3beeacf 100644
 @@ -265,7 +265,7 @@ static int s2n_custom_hmac_update(struct s2n_hmac_state *state, const voi
       */
      const uint32_t HIGHEST_32_BIT = 4294949760;
-     //RESULT_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
+     POSIX_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
 -    uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
 +    uint32_t value = (size) % state->hash_block_size;
-     s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block);
+     POSIX_GUARD(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
      state->currently_in_hash_block %= state->hash_block_size;
  
 @@ -425,8 +425,8 @@ int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
