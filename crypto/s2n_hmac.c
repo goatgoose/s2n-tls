@@ -277,7 +277,7 @@ static int s2n_custom_hmac_update(struct s2n_hmac_state *state, const void *in, 
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
         .validate = &s2n_custom_hmac_state_validate,
         .init = &s2n_custom_hmac_init,
-        .update = &s2n_custom_hmac_update,
+//        .update = &s2n_custom_hmac_update,
 };
 
 const struct s2n_hmac_impl *s2n_hmac_get_impl()
@@ -332,7 +332,7 @@ int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 
 //    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
 //    POSIX_ENSURE_REF(impl);
-//
+    POSIX_GUARD_RESULT(s2n_custom_hmac_state_validate(state));
 
     POSIX_GUARD(s2n_custom_hmac_update(state, in, size));
 
