@@ -2,7 +2,7 @@ diff --git a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c b/tests/sidetrail
 index 3405781..3beeacf 100644
 --- a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c
 +++ b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c
-@@ -265,7 +265,7 @@ static int s2n_custom_hmac_update(struct s2n_hmac_state *state, const voi
+@@ -265,7 +265,7 @@ static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const voi
       */
      const uint32_t HIGHEST_32_BIT = 4294949760;
      POSIX_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
