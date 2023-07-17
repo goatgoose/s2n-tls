@@ -238,7 +238,7 @@ static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_al
     return S2N_RESULT_OK;
 }
 
-static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
+static int s2n_custom_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
     //RESULT_ENSURE(state->hash_block_size != 0, S2N_ERR_PRECONDITION_VIOLATION);
 
@@ -271,7 +271,7 @@ static S2N_RESULT s2n_custom_hmac_update(struct s2n_hmac_state *state, const voi
 
     s2n_hash_update(&state->inner, in, size);
 
-    return S2N_RESULT_OK;
+    return S2N_SUCCESS;
 }
 
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
@@ -334,7 +334,7 @@ int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 //    POSIX_ENSURE_REF(impl);
 //
 
-    POSIX_GUARD_RESULT(s2n_custom_hmac_update(state, in, size));
+    POSIX_GUARD(s2n_custom_hmac_update(state, in, size));
 
     return S2N_SUCCESS;
 }
