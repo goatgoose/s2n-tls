@@ -179,13 +179,13 @@ int s2n_hmac_hash_block_size(s2n_hmac_algorithm hmac_alg, uint16_t *block_size)
     return S2N_SUCCESS;
 }
 
-//struct s2n_hmac_impl {
-//    S2N_RESULT (*init)(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
-//    S2N_RESULT (*update)(struct s2n_hmac_state *hmac, const void *data, uint32_t size);
-//    S2N_RESULT (*digest)(struct s2n_hmac_state *hmac, void *digest, uint32_t size);
-//    S2N_RESULT (*reset)(struct s2n_hmac_state *hmac);
-//    S2N_RESULT (*copy)(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_from);
-//};
+struct s2n_hmac_impl {
+    S2N_RESULT (*init)(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+    S2N_RESULT (*update)(struct s2n_hmac_state *hmac, const void *data, uint32_t size);
+    S2N_RESULT (*digest)(struct s2n_hmac_state *hmac, void *digest, uint32_t size);
+    S2N_RESULT (*reset)(struct s2n_hmac_state *hmac);
+    S2N_RESULT (*copy)(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_from);
+};
 
 static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
