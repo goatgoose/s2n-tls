@@ -358,10 +358,10 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
         POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
     }
 
-    const struct s2n_hmac_impl *hmac_impl = s2n_hmac_get_impl();
-    POSIX_ENSURE_REF(hmac_impl);
-
-    POSIX_GUARD_RESULT(hmac_impl->init(state, alg, key, key_len));
+    // pad
+    // pad
+    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
+    POSIX_GUARD_RESULT(s2n_custom_hmac_init(state, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
