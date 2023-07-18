@@ -33,7 +33,13 @@ typedef enum {
     S2N_HMAC_SSLv3_SHA1
 } s2n_hmac_algorithm;
 
+typedef enum {
+    S2N_HMAC_CUSTOM_IMPL
+} s2n_hmac_implementation_type;
+
 struct s2n_hmac_state {
+    s2n_hmac_implementation_type impl_type;
+
     s2n_hmac_algorithm alg;
 
     uint16_t hash_block_size;
