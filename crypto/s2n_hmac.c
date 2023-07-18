@@ -312,7 +312,7 @@ static S2N_RESULT s2n_custom_hmac_copy(struct s2n_hmac_state *to, struct s2n_hma
 
 const struct s2n_hmac_impl s2n_custom_hmac_impl = {
     .init = &s2n_custom_hmac_init,
-//    .update = &s2n_custom_hmac_update,
+    .update = &s2n_custom_hmac_update,
 //    .digest = &s2n_custom_hmac_digest,
 //    .reset = &s2n_custom_hmac_reset,
 //    .copy = &s2n_custom_hmac_copy
