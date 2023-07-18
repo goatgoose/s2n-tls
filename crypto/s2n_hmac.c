@@ -368,10 +368,10 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
 
 int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 {
-    POSIX_ENSURE_REF(state);
-
     POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
-    POSIX_GUARD_RESULT(s2n_custom_hmac_update(state, in, size));
+    const struct s2n_hmac_impl *hmac_impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac_impl);
+    POSIX_GUARD_RESULT(hmac_impl->update(state, in, size));
 
     return S2N_SUCCESS;
 }
