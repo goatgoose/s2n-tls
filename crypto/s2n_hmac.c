@@ -315,7 +315,7 @@ const struct s2n_hmac_impl s2n_custom_hmac_impl = {
     .update = &s2n_custom_hmac_update,
     .digest = &s2n_custom_hmac_digest,
     .reset = &s2n_custom_hmac_reset,
-    .copy = &s2n_custom_hmac_copy,
+    .copy = &s2n_custom_hmac_copy
 };
 
 //const struct s2n_hmac_impl *s2n_hmac_get_impl()
