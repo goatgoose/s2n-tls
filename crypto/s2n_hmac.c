@@ -280,15 +280,19 @@ const struct s2n_hmac_impl s2n_custom_hmac_impl = {
 //        .update = &s2n_custom_hmac_update,
 };
 
+const struct s2n_hmac_impl *s2n_hmac_get_impl()
+{
+    return &s2n_custom_hmac_impl;
+}
+
 S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
 
-    if (state->impl_type == S2N_HMAC_CUSTOM_IMPL) {
-        RESULT_GUARD(s2n_custom_hmac_state_validate(state));
-    } else {
-        RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
-    }
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    RESULT_ENSURE_REF(impl);
+
+    RESULT_GUARD(impl->validate(state));
 
     return S2N_RESULT_OK;
 }
@@ -300,6 +304,7 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
     POSIX_GUARD(s2n_hash_new(&state->inner_just_key));
     POSIX_GUARD(s2n_hash_new(&state->outer));
     POSIX_GUARD(s2n_hash_new(&state->outer_just_key));
+    POSIX_POSTCONDITION(s2n_hmac_state_validate(state));
     return S2N_SUCCESS;
 }
 
@@ -307,19 +312,16 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
 {
     POSIX_ENSURE_REF(state);
 
-    state->impl_type = S2N_HMAC_CUSTOM_IMPL;
-
     if (!s2n_hmac_is_available(alg)) {
         /* Prevent hmacs from being used if they are not available. */
         POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
     }
 
-    if (state->impl_type == S2N_HMAC_CUSTOM_IMPL) {
-        POSIX_GUARD_RESULT(s2n_custom_hmac_state_validate(state));
-        POSIX_GUARD_RESULT(s2n_custom_hmac_init(state, alg, key, key_len));
-    } else {
-        POSIX_BAIL(S2N_ERR_UNIMPLEMENTED);
-    }
+    const struct s2n_hmac_impl *impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(impl);
+
+    POSIX_GUARD_RESULT(impl->validate(state));
+    POSIX_GUARD_RESULT(impl->init(state, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
