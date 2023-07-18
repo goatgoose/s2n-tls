@@ -179,6 +179,14 @@ int s2n_hmac_hash_block_size(s2n_hmac_algorithm hmac_alg, uint16_t *block_size)
     return S2N_SUCCESS;
 }
 
+struct s2n_hmac_impl {
+    S2N_RESULT (*init)(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+    S2N_RESULT (*update)(struct s2n_hmac_state *hmac, const void *data, uint32_t size);
+    S2N_RESULT (*digest)(struct s2n_hmac_state *hmac, void *digest, uint32_t size);
+    S2N_RESULT (*reset)(struct s2n_hmac_state *hmac);
+    S2N_RESULT (*copy)(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_from);
+};
+
 static S2N_RESULT s2n_custom_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
     state->alg = alg;
@@ -302,6 +310,19 @@ static S2N_RESULT s2n_custom_hmac_copy(struct s2n_hmac_state *to, struct s2n_hma
     return S2N_RESULT_OK;
 }
 
+const struct s2n_hmac_impl s2n_custom_hmac_impl = {
+        .init = &s2n_custom_hmac_init,
+        .update = &s2n_custom_hmac_update,
+        .digest = &s2n_custom_hmac_digest,
+        .reset = &s2n_custom_hmac_reset,
+        .copy = &s2n_custom_hmac_copy,
+};
+
+const struct s2n_hmac_impl *s2n_hmac_get_impl()
+{
+    return &s2n_custom_hmac_impl;
+}
+
 S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
@@ -330,15 +351,17 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
 
 int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
-    POSIX_ENSURE_REF(state);
+    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
 
     if (!s2n_hmac_is_available(alg)) {
         /* Prevent hmacs from being used if they are not available. */
         POSIX_BAIL(S2N_ERR_HMAC_INVALID_ALGORITHM);
     }
 
-    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
-    POSIX_GUARD_RESULT(s2n_custom_hmac_init(state, alg, key, key_len));
+    const struct s2n_hmac_impl *hmac_impl = s2n_hmac_get_impl();
+    POSIX_ENSURE_REF(hmac_impl);
+
+    POSIX_GUARD_RESULT(hmac_impl->init(state, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
