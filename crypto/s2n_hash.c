@@ -451,15 +451,18 @@ static int s2n_evp_hash_reset(struct s2n_hash_state *state)
 
 static int s2n_evp_hash_free(struct s2n_hash_state *state)
 {
-    S2N_EVP_MD_CTX_FREE(state->digest.high_level.evp.ctx);
-    state->digest.high_level.evp.ctx = NULL;
+    if (state->digest.high_level.evp.ctx) {
+        S2N_EVP_MD_CTX_FREE(state->digest.high_level.evp.ctx);
+        state->digest.high_level.evp.ctx = NULL;
+    }
 
-    if (s2n_use_custom_md5_sha1()) {
+    if (state->digest.high_level.evp_md5_secondary.ctx) {
         S2N_EVP_MD_CTX_FREE(state->digest.high_level.evp_md5_secondary.ctx);
         state->digest.high_level.evp_md5_secondary.ctx = NULL;
     }
 
     state->is_ready_for_input = 0;
+
     return S2N_SUCCESS;
 }
 
