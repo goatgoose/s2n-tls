@@ -40,6 +40,8 @@ typedef enum {
 } s2n_hmac_implementation_type;
 
 struct s2n_custom_hmac_state {
+    s2n_hmac_algorithm alg;
+
     uint16_t hash_block_size;
     uint32_t currently_in_hash_block;
     uint16_t xor_pad_size;
@@ -58,11 +60,11 @@ struct s2n_custom_hmac_state {
 };
 
 struct s2n_libcrypto_hmac_state {
+    unsigned noop : 1;
     HMAC_CTX *ctx;
 };
 
 struct s2n_hmac_state {
-    s2n_hmac_algorithm alg;
     s2n_hmac_implementation_type impl_type;
 
     struct {
@@ -83,19 +85,19 @@ bool s2n_hmac_is_available(s2n_hmac_algorithm alg);
 int s2n_hmac_hash_alg(s2n_hmac_algorithm hmac_alg, s2n_hash_algorithm *out);
 int s2n_hash_hmac_alg(s2n_hash_algorithm hash_alg, s2n_hmac_algorithm *out);
 
-int s2n_hmac_new(struct s2n_hmac_state *hmac);
-S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *hmac);
-int s2n_hmac_init(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
-int s2n_hmac_init_cbc(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
-int s2n_hmac_update(struct s2n_hmac_state *hmac, const void *in, uint32_t size);
-int s2n_hmac_digest(struct s2n_hmac_state *hmac, void *out, uint32_t size);
-int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *hmac, void *out, uint32_t size);
-int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *hmac, uint32_t *currently_in_hash_block);
+int s2n_hmac_new(struct s2n_hmac_state *state);
+S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state);
+int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+int s2n_hmac_init_cbc(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t klen);
+int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size);
+int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size);
+int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size);
+int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block);
 int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len);
-int s2n_hmac_free(struct s2n_hmac_state *hmac);
-int s2n_hmac_reset(struct s2n_hmac_state *hmac);
-int s2n_hmac_copy(struct s2n_hmac_state *hmac_to, struct s2n_hmac_state *hmac_from);
-int s2n_hmac_wipe(struct s2n_hmac_state *hmac);
+int s2n_hmac_free(struct s2n_hmac_state *state);
+int s2n_hmac_reset(struct s2n_hmac_state *state);
+int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from);
+int s2n_hmac_wipe(struct s2n_hmac_state *state);
 int s2n_hmac_save_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s2n_hmac_state* hmac);
 int s2n_hmac_restore_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s2n_hmac_state* hmac);
 
