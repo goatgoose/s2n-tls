@@ -1,5 +1,5 @@
 diff --git a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c
-index 3405781..3beeacf 100644
+index 8e7f94d5..28e8fd52 100644
 --- a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c
 +++ b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.c
 @@ -28,6 +28,9 @@
@@ -12,27 +12,7 @@ index 3405781..3beeacf 100644
  #include <stdint.h>
  
  int s2n_hash_hmac_alg(s2n_hash_algorithm hash_alg, s2n_hmac_algorithm *out)
-@@ -268,7 +271,7 @@ static S2N_RESULT s2n_hmac_update_impl(struct s2n_hmac_state *state, const void
-      */
-     const uint32_t HIGHEST_32_BIT = 4294949760;
-     RESULT_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
--    uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
-+    uint32_t value = (size) % state->hash_block_size;
-     RESULT_GUARD_POSIX(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
-     state->currently_in_hash_block %= state->hash_block_size;
- 
-@@ -333,8 +336,8 @@ static S2N_RESULT s2n_hmac_copy_impl(struct s2n_hmac_state *to, struct s2n_hmac_
-     RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer, &from->outer));
-     RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer_just_key, &from->outer_just_key));
- 
--    RESULT_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
--    RESULT_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
-+//    RESULT_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
-+//    RESULT_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
- 
-     return S2N_RESULT_OK;
- }
-@@ -440,28 +443,28 @@ int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
+@@ -205,28 +208,28 @@ int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from)
  /* Preserve the handlers for hmac state pointers to avoid re-allocation
   * Only valid if the HMAC is in EVP mode
   */
@@ -84,7 +64,7 @@ index 3405781..3beeacf 100644
  S2N_RESULT s2n_hmac_md_from_alg(s2n_hmac_algorithm alg, const EVP_MD **md)
  {
 diff --git a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.h b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.h
-index 7af7e61..e6382ce 100644
+index 1824d981..e2b27257 100644
 --- a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.h
 +++ b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac.h
 @@ -53,12 +53,12 @@ struct s2n_hmac_state {
@@ -116,3 +96,27 @@ index 7af7e61..e6382ce 100644
 +//int s2n_hmac_restore_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s2n_hmac_state* hmac);
  
  S2N_RESULT s2n_hmac_md_from_alg(s2n_hmac_algorithm alg, const EVP_MD **md);
+diff --git a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac_impl.c b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac_impl.c
+index ed052162..0a2b71e5 100644
+--- a/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac_impl.c
++++ b/tests/sidetrail/working/s2n-cbc/crypto/s2n_hmac_impl.c
+@@ -199,7 +199,7 @@ S2N_RESULT s2n_hmac_update_impl(struct s2n_hmac_state *state, const void *in, ui
+      */
+     const uint32_t HIGHEST_32_BIT = 4294949760;
+     RESULT_ENSURE(size <= (UINT32_MAX - HIGHEST_32_BIT), S2N_ERR_INTEGER_OVERFLOW);
+-    uint32_t value = (HIGHEST_32_BIT + size) % state->hash_block_size;
++    uint32_t value = (size) % state->hash_block_size;
+     RESULT_GUARD_POSIX(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
+     state->currently_in_hash_block %= state->hash_block_size;
+ 
+@@ -264,8 +264,8 @@ S2N_RESULT s2n_hmac_copy_impl(struct s2n_hmac_state *to, struct s2n_hmac_state *
+     RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer, &from->outer));
+     RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer_just_key, &from->outer_just_key));
+ 
+-    RESULT_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
+-    RESULT_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
++//    RESULT_CHECKED_MEMCPY(to->xor_pad, from->xor_pad, sizeof(to->xor_pad));
++//    RESULT_CHECKED_MEMCPY(to->digest_pad, from->digest_pad, sizeof(to->digest_pad));
+ 
+     return S2N_RESULT_OK;
+ }

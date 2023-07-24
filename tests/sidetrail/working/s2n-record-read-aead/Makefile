@@ -10,6 +10,7 @@ cflags += -I$(CURDIR)/../../../../api/
 cflags += -fPIC -std=c99 -fgnu89-inline
 extras += crypto/s2n_hash.c
 extras += crypto/s2n_hmac.c
+extras += crypto/s2n_hmac_impl.c
 extras += error/s2n_errno.c
 extras += stuffer/s2n_stuffer.c
 extras += stuffer/s2n_stuffer_network_order.c

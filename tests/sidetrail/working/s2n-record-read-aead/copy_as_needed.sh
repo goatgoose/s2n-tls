@@ -25,6 +25,7 @@ mkdir -p crypto
 #The hmac should be based off the old hmac, so just apply the patches to add the invarients
 cp $S2N_BASE/crypto/s2n_hmac.c crypto/
 cp $S2N_BASE/crypto/s2n_hmac.h crypto/
+cp $S2N_BASE/crypto/s2n_hmac_impl.c crypto/
 patch -p5 < ../patches/hmac.patch
 
 #the hash uses my stubs for now, so replace the file
