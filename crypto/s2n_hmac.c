@@ -375,6 +375,16 @@ static S2N_RESULT s2n_custom_hmac_copy(struct s2n_custom_hmac_state *to, struct 
     return S2N_RESULT_OK;
 }
 
+bool s2n_libcrypto_supports_hmac()
+{
+#ifdef S2N_LIBCRYPTO_SUPPORTS_HMAC
+    return true;
+#else
+    return false;
+#endif
+}
+
+#ifdef S2N_LIBCRYPTO_SUPPORTS_HMAC
 S2N_RESULT s2n_libcrypto_hmac_state_validate(struct s2n_libcrypto_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
@@ -488,6 +498,53 @@ S2N_RESULT s2n_libcrypto_hmac_copy(struct s2n_libcrypto_hmac_state *to, struct s
     RESULT_GUARD_OSSL(HMAC_CTX_copy_ex(to->ctx, from->ctx), S2N_ERR_HMAC_INIT);
     return S2N_RESULT_OK;
 }
+#else
+S2N_RESULT s2n_libcrypto_hmac_state_validate(struct s2n_libcrypto_hmac_state *state)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_new(struct s2n_libcrypto_hmac_state *state)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_init(struct s2n_libcrypto_hmac_state *state, s2n_hmac_algorithm alg,
+        const void *key, uint32_t key_len)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_update(struct s2n_libcrypto_hmac_state *state, const void *in, uint32_t size)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_digest(struct s2n_libcrypto_hmac_state *state, void *out, uint32_t size)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_size(struct s2n_libcrypto_hmac_state *state, uint8_t *out)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_free(struct s2n_libcrypto_hmac_state *state)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_reset(struct s2n_libcrypto_hmac_state *state)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_libcrypto_hmac_copy(struct s2n_libcrypto_hmac_state *to, struct s2n_libcrypto_hmac_state *from)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+#endif
 
 S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
 {
@@ -496,7 +553,7 @@ S2N_RESULT s2n_hmac_state_validate(struct s2n_hmac_state *state)
     struct s2n_custom_hmac_state *custom_state = &state->impl_state.custom;
     RESULT_GUARD(s2n_custom_hmac_state_validate(custom_state));
 
-    if (s2n_is_in_fips_mode()) {
+    if (s2n_is_in_fips_mode() && s2n_libcrypto_supports_hmac()) {
         struct s2n_libcrypto_hmac_state *libcrypto_state = &state->impl_state.libcrypto;
         RESULT_GUARD(s2n_libcrypto_hmac_state_validate(libcrypto_state));
     }
@@ -516,7 +573,7 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
     /* The libcrypto HMAC implementation can only be used in FIPS mode, so it's only allocated in
      * FIPS mode.
      */
-    if (s2n_is_in_fips_mode()) {
+    if (s2n_is_in_fips_mode() && s2n_libcrypto_supports_hmac()) {
         POSIX_GUARD_RESULT(s2n_libcrypto_hmac_new(&state->impl_state.libcrypto));
     }
 
@@ -552,7 +609,7 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
     /* By default, s2n-tls uses a custom HMAC implementation. If s2n-tls is operating in FIPS mode, the
      * FIPS-validated libcrypto implementation is used instead.
      */
-    if (s2n_is_in_fips_mode()) {
+    if (s2n_is_in_fips_mode() && s2n_libcrypto_supports_hmac()) {
         impl_type = S2N_HMAC_LIBCRYPTO_IMPL;
     }
 
@@ -691,7 +748,7 @@ int s2n_hmac_free(struct s2n_hmac_state *state)
 {
     POSIX_GUARD_RESULT(s2n_custom_hmac_free(&state->impl_state.custom));
 
-    if (s2n_is_in_fips_mode()) {
+    if (s2n_is_in_fips_mode() && s2n_libcrypto_supports_hmac()) {
         POSIX_GUARD_RESULT(s2n_libcrypto_hmac_free(&state->impl_state.libcrypto));
     }
 
