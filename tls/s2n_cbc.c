@@ -46,7 +46,7 @@
 int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, struct s2n_blob *decrypted)
 {
     uint8_t mac_digest_size;
-    POSIX_GUARD(s2n_hmac_digest_size(hmac->alg, &mac_digest_size));
+    POSIX_GUARD(s2n_hmac_size(hmac, &mac_digest_size));
 
     /* The record has to be at least big enough to contain the MAC,
      * plus the padding length byte */

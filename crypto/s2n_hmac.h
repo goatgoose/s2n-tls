@@ -80,7 +80,7 @@ struct s2n_hmac_evp_backup {
     struct s2n_hash_evp_digest outer_just_key;
 };
 
-int s2n_hmac_digest_size(s2n_hmac_algorithm alg, uint8_t *out);
+int s2n_hmac_digest_size(s2n_hmac_algorithm hmac_alg, uint8_t *out);
 bool s2n_hmac_is_available(s2n_hmac_algorithm alg);
 int s2n_hmac_hash_alg(s2n_hmac_algorithm hmac_alg, s2n_hash_algorithm *out);
 int s2n_hash_hmac_alg(s2n_hash_algorithm hash_alg, s2n_hmac_algorithm *out);
@@ -93,6 +93,7 @@ int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size)
 int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size);
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size);
 int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block);
+int s2n_hmac_size(struct s2n_hmac_state *state, uint8_t *out);
 int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len);
 int s2n_hmac_free(struct s2n_hmac_state *state);
 int s2n_hmac_reset(struct s2n_hmac_state *state);
