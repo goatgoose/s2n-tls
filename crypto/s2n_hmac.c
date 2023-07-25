@@ -513,7 +513,7 @@ int s2n_hmac_new(struct s2n_hmac_state *state)
      */
     POSIX_GUARD_RESULT(s2n_custom_hmac_new(&state->impl_state.custom));
 
-    /* The libcrypto HMAC implementation is only ever used in FIPS mode, so it's only allocated in
+    /* The libcrypto HMAC implementation can only be used in FIPS mode, so it's only allocated in
      * FIPS mode.
      */
     if (s2n_is_in_fips_mode()) {
@@ -561,9 +561,9 @@ int s2n_hmac_init(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const vo
     return S2N_SUCCESS;
 }
 
-int s2n_hmac_init_cbc(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
+int s2n_hmac_init_cbc(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, const void *key, uint32_t key_len)
 {
-    POSIX_ENSURE_REF(hmac);
+    POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
 
     /* When validating CBC records, s2n-tls uses internal hash state to mitigate lucky 13 attacks.
      * This internal hash state is only tracked when using the custom HMAC implementation, so the
@@ -571,7 +571,7 @@ int s2n_hmac_init_cbc(struct s2n_hmac_state *hmac, s2n_hmac_algorithm alg, const
      */
     s2n_hmac_implementation_type impl_type = S2N_HMAC_CUSTOM_IMPL;
 
-    POSIX_GUARD_RESULT(s2n_hmac_init_impl(hmac, impl_type, alg, key, key_len));
+    POSIX_GUARD_RESULT(s2n_hmac_init_impl(state, impl_type, alg, key, key_len));
 
     return S2N_SUCCESS;
 }
@@ -644,12 +644,12 @@ int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *o
     return s2n_hash_update(&custom_state->inner, custom_state->xor_pad, custom_state->hash_block_size);
 }
 
-int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block)
+int s2n_hmac_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block)
 {
     POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
     POSIX_ENSURE_REF(currently_in_hash_block);
 
-    /* The number of bytes in the hash block is only tracked with the custom HMAC implementation. */
+    /* currently_in_hash_block is only tracked in the custom HMAC implementation. */
     POSIX_ENSURE_EQ(state->impl_type, S2N_HMAC_CUSTOM_IMPL);
     struct s2n_custom_hmac_state *custom_state = &state->impl_state.custom;
 

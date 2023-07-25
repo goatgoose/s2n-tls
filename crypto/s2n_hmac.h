@@ -92,13 +92,12 @@ int s2n_hmac_init_cbc(struct s2n_hmac_state *state, s2n_hmac_algorithm alg, cons
 int s2n_hmac_update(struct s2n_hmac_state *state, const void *in, uint32_t size);
 int s2n_hmac_digest(struct s2n_hmac_state *state, void *out, uint32_t size);
 int s2n_hmac_digest_two_compression_rounds(struct s2n_hmac_state *state, void *out, uint32_t size);
-int s2n_hmac_get_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block);
+int s2n_hmac_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *currently_in_hash_block);
 int s2n_hmac_size(struct s2n_hmac_state *state, uint8_t *out);
 int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len);
 int s2n_hmac_free(struct s2n_hmac_state *state);
 int s2n_hmac_reset(struct s2n_hmac_state *state);
 int s2n_hmac_copy(struct s2n_hmac_state *to, struct s2n_hmac_state *from);
-int s2n_hmac_wipe(struct s2n_hmac_state *state);
 int s2n_hmac_save_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s2n_hmac_state* hmac);
 int s2n_hmac_restore_evp_hash_state(struct s2n_hmac_evp_backup* backup, struct s2n_hmac_state* hmac);
 
