@@ -27,6 +27,7 @@ mkdir -p crypto
 cp $S2N_BASE/crypto/s2n_hmac.c crypto/
 cp $S2N_BASE/crypto/s2n_hmac.h crypto/
 patch -p5 < ../patches/hmac.patch
+cp $S2N_BASE/crypto/s2n_fips.c crypto/
 
 #the hash uses my stubs for now, so replace the file
 cp stubs/s2n_hash.c crypto/
