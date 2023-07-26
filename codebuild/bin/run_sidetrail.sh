@@ -63,9 +63,9 @@ echo $BOOGIE
 echo $CORRAL
 
 runNegativeTest "s2n-record-read-cbc-negative-test"
-runSingleTest "s2n-cbc" # Takes 6m 30s
-#runSingleTest "s2n-record-read-aead"
-#runSingleTest "s2n-record-read-cbc"
-#runSingleTest "s2n-record-read-composite"
-#runSingleTest "s2n-record-read-stream"
+#runSingleTest "s2n-cbc" # Takes 6m 30s
+runSingleTest "s2n-record-read-aead"
+runSingleTest "s2n-record-read-cbc"
+runSingleTest "s2n-record-read-composite"
+runSingleTest "s2n-record-read-stream"
 
