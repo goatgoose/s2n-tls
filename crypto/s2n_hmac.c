@@ -684,16 +684,6 @@ int s2n_hmac_currently_in_hash_block(struct s2n_hmac_state *state, uint32_t *cur
     return S2N_SUCCESS;
 }
 
-int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len)
-{
-    POSIX_ENSURE_REF(a);
-    POSIX_ENSURE_REF(b);
-
-    POSIX_ENSURE_EQ(s2n_constant_time_equals(a, b, len), true);
-
-    return S2N_SUCCESS;
-}
-
 int s2n_hmac_size(struct s2n_hmac_state *state, uint8_t *out)
 {
     POSIX_GUARD_RESULT(s2n_hmac_state_validate(state));
@@ -709,6 +699,16 @@ int s2n_hmac_size(struct s2n_hmac_state *state, uint8_t *out)
         default:
             POSIX_BAIL(S2N_ERR_PRECONDITION_VIOLATION);
     }
+
+    return S2N_SUCCESS;
+}
+
+int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len)
+{
+    POSIX_ENSURE_REF(a);
+    POSIX_ENSURE_REF(b);
+
+    POSIX_ENSURE_EQ(s2n_constant_time_equals(a, b, len), true);
 
     return S2N_SUCCESS;
 }

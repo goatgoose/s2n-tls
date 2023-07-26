@@ -20,7 +20,7 @@ index 3405781..3beeacf 100644
 +    uint32_t value = (size) % state->hash_block_size;
      RESULT_GUARD_POSIX(s2n_add_overflow(state->currently_in_hash_block, value, &state->currently_in_hash_block));
      state->currently_in_hash_block %= state->hash_block_size;
- 
+
 @@ -369,8 +372,8 @@ static S2N_RESULT s2n_custom_hmac_copy(struct s2n_custom_hmac_state *to, struct
      RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer, &from->outer));
      RESULT_GUARD_POSIX(s2n_hash_copy(&to->outer_just_key, &from->outer_just_key));
@@ -120,7 +120,7 @@ index 7af7e61..e6382ce 100644
 +//    struct s2n_hash_evp_digest outer;
 +//    struct s2n_hash_evp_digest outer_just_key;
 +//};
- 
+
  int s2n_hmac_digest_size(s2n_hmac_algorithm hmac_alg, uint8_t *out);
  bool s2n_hmac_is_available(s2n_hmac_algorithm alg);
 @@ -98,7 +98,7 @@ int s2n_hmac_digest_verify(const void *a, const void *b, uint32_t len);
