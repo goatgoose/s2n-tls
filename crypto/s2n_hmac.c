@@ -179,6 +179,16 @@ int s2n_hmac_hash_block_size(s2n_hmac_algorithm hmac_alg, uint16_t *block_size)
     return S2N_SUCCESS;
 }
 
+static S2N_RESULT s2n_custom_hmac_new(struct s2n_custom_hmac_state *state)
+{
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner_just_key));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer));
+    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer_just_key));
+
+    return S2N_RESULT_OK;
+}
+
 static S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_custom_hmac_state *state)
 {
     RESULT_ENSURE_REF(state);
@@ -187,16 +197,6 @@ static S2N_RESULT s2n_custom_hmac_state_validate(struct s2n_custom_hmac_state *s
     RESULT_GUARD(s2n_hash_state_validate(&state->inner_just_key));
     RESULT_GUARD(s2n_hash_state_validate(&state->outer));
     RESULT_GUARD(s2n_hash_state_validate(&state->outer_just_key));
-
-    return S2N_RESULT_OK;
-}
-
-static S2N_RESULT s2n_custom_hmac_new(struct s2n_custom_hmac_state *state)
-{
-    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner));
-    RESULT_GUARD_POSIX(s2n_hash_new(&state->inner_just_key));
-    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer));
-    RESULT_GUARD_POSIX(s2n_hash_new(&state->outer_just_key));
 
     return S2N_RESULT_OK;
 }
