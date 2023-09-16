@@ -45,7 +45,12 @@ S2N_RESULT s2n_circle_stuffer_data_available(struct s2n_circle_stuffer *stuffer,
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     RESULT_ENSURE_REF(data_available);
 
-    if (stuffer->read_pos < stuffer->write_pos) {
+    if (stuffer->full) {
+        *data_available = stuffer->blob.size;
+        return S2N_RESULT_OK;
+    }
+
+    if (stuffer->read_pos <= stuffer->write_pos) {
         *data_available = stuffer->write_pos - stuffer->read_pos;
     } else {
         *data_available = stuffer->blob.size - stuffer->read_pos + stuffer->write_pos;
@@ -59,14 +64,17 @@ S2N_RESULT s2n_circle_stuffer_space_remaining(struct s2n_circle_stuffer *stuffer
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     RESULT_ENSURE_REF(space_remaining);
 
+    if (stuffer->full) {
+        *space_remaining = 0;
+        return S2N_RESULT_OK;
+    }
+
     uint32_t data_available = 0;
     RESULT_GUARD(s2n_circle_stuffer_data_available(stuffer, &data_available));
     *space_remaining = stuffer->blob.size - data_available;
 
     return S2N_RESULT_OK;
 }
-
-S2N_RESULT s2n_circle_stuffer_set_write_pos(struct s2n_circle_stuffer *stuffer, uint)
 
 S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out)
 {
@@ -88,7 +96,7 @@ S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const st
     RESULT_ENSURE_LTE(in->size, space_remaining);
 
     uint32_t in_offset = 0;
-    if (stuffer->read_pos < stuffer->write_pos) {
+    if (stuffer->read_pos <= stuffer->write_pos) {
         in_offset = MIN(in->size, stuffer->blob.size - stuffer->write_pos);
         if (in_offset > 0) {
             RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, in->data, in_offset);
@@ -141,6 +149,10 @@ S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, con
     RESULT_ENSURE_LTE(n, space_remaining);
 
     stuffer->write_pos = stuffer->write_pos + n % stuffer->blob.size;
+
+    if (stuffer->write_pos == stuffer->read_pos) {
+        stuffer->full = true;
+    }
 
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     return S2N_RESULT_OK;

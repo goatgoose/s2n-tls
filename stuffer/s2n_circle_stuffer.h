@@ -24,7 +24,7 @@ struct s2n_circle_stuffer {
     uint32_t read_pos;
     uint32_t write_pos;
 
-    unsigned wrapped : 1;
+    unsigned full : 1;
 };
 
 S2N_RESULT s2n_circle_stuffer_init(struct s2n_circle_stuffer *stuffer, struct s2n_blob *in);
