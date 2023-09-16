@@ -28,6 +28,10 @@ struct s2n_circle_stuffer {
 };
 
 S2N_RESULT s2n_circle_stuffer_init(struct s2n_circle_stuffer *stuffer, struct s2n_blob *in);
+S2N_RESULT s2n_circle_stuffer_validate(const struct s2n_circle_stuffer *stuffer);
+
+S2N_RESULT s2n_circle_stuffer_data_available(struct s2n_circle_stuffer *stuffer, uint32_t *data_available);
+S2N_RESULT s2n_circle_stuffer_space_remaining(struct s2n_circle_stuffer *stuffer, uint32_t *space_remaining);
 
 S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out);
 S2N_RESULT s2n_circle_stuffer_erase_and_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out);
