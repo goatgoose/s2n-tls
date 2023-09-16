@@ -13,6 +13,8 @@
 * permissions and limitations under the License.
 */
 
+#include <sys/param.h>
+
 #include "stuffer/s2n_circle_stuffer.h"
 
 #include "error/s2n_errno.h"
@@ -64,6 +66,8 @@ S2N_RESULT s2n_circle_stuffer_space_remaining(struct s2n_circle_stuffer *stuffer
     return S2N_RESULT_OK;
 }
 
+S2N_RESULT s2n_circle_stuffer_set_write_pos(struct s2n_circle_stuffer *stuffer, uint)
+
 S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out)
 {
     RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
@@ -79,8 +83,26 @@ S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const st
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     RESULT_ENSURE_REF(in);
 
+    uint32_t space_remaining = 0;
+    RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
+    RESULT_ENSURE_LTE(in->size, space_remaining);
 
+    uint32_t in_offset = 0;
+    if (stuffer->read_pos < stuffer->write_pos) {
+        in_offset = MIN(in->size, stuffer->blob.size - stuffer->write_pos);
+        if (in_offset > 0) {
+            RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, in->data, in_offset);
+            RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, in_offset));
+        }
+    }
 
+    uint32_t remaining_len = MIN(in->size - in_offset, stuffer->read_pos);
+    if (remaining_len > 0) {
+        RESULT_CHECKED_MEMCPY(stuffer->blob.data, in->data + in_offset, remaining_len);
+        RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, remaining_len));
+    }
+
+    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     return S2N_RESULT_OK;
 }
 
@@ -112,5 +134,14 @@ S2N_RESULT s2n_circle_stuffer_skip_read(struct s2n_circle_stuffer *stuffer, uint
 
 S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, const uint32_t n)
 {
-    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
+
+    uint32_t space_remaining = 0;
+    RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
+    RESULT_ENSURE_LTE(n, space_remaining);
+
+    stuffer->write_pos = stuffer->write_pos + n % stuffer->blob.size;
+
+    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
+    return S2N_RESULT_OK;
 }
