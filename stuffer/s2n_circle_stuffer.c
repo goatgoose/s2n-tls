@@ -81,22 +81,30 @@ S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2
     RESULT_ENSURE_REF(stuffer);
     RESULT_ENSURE_REF(out);
 
+    return s2n_circle_stuffer_read_bytes(stuffer, out->data, out->size);
+}
+
+S2N_RESULT s2n_circle_stuffer_read_bytes(struct s2n_circle_stuffer *stuffer, uint8_t *data, const uint32_t size)
+{
+    RESULT_ENSURE_REF(stuffer);
+    RESULT_ENSURE_REF(data);
+
     uint32_t data_available = 0;
     RESULT_GUARD(s2n_circle_stuffer_data_available(stuffer, &data_available));
-    RESULT_ENSURE_LTE(out->size, data_available);
+    RESULT_ENSURE_LTE(size, data_available);
 
     uint32_t first_chunk_len = 0;
     if (stuffer->write_pos <= stuffer->read_pos) {
-        first_chunk_len = MIN(out->size, stuffer->blob.size - stuffer->read_pos);
+        first_chunk_len = MIN(size, stuffer->blob.size - stuffer->read_pos);
         if (first_chunk_len > 0) {
-            RESULT_CHECKED_MEMCPY(out->data, stuffer->blob.data + stuffer->read_pos, first_chunk_len);
+            RESULT_CHECKED_MEMCPY(data, stuffer->blob.data + stuffer->read_pos, first_chunk_len);
             RESULT_GUARD(s2n_circle_stuffer_skip_read(stuffer, first_chunk_len));
         }
     }
 
-    uint32_t remaining_len = out->size - first_chunk_len;
+    uint32_t remaining_len = size - first_chunk_len;
     if (remaining_len > 0) {
-        RESULT_CHECKED_MEMCPY(out->data + first_chunk_len, stuffer->blob.data + stuffer->read_pos, remaining_len);
+        RESULT_CHECKED_MEMCPY(data + first_chunk_len, stuffer->blob.data + stuffer->read_pos, remaining_len);
         RESULT_GUARD(s2n_circle_stuffer_skip_read(stuffer, remaining_len));
     }
 
@@ -106,6 +114,9 @@ S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2
 
 S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const struct s2n_blob *in)
 {
+    RESULT_ENSURE_REF(stuffer);
+    RESULT_ENSURE_REF(in);
+
     return s2n_circle_stuffer_write_bytes(stuffer, in->data, in->size);
 }
 
