@@ -40,3 +40,5 @@ S2N_RESULT s2n_circle_stuffer_read_bytes(struct s2n_circle_stuffer *stuffer, uin
 S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, const uint32_t n);
 S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const struct s2n_blob *in);
 S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, const uint8_t *data, const uint32_t size);
+
+S2N_RESULT s2n_circle_stuffer_copy(struct s2n_circle_stuffer *from, struct s2n_circle_stuffer *to, uint32_t len);

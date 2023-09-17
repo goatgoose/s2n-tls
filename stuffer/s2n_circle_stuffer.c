@@ -184,3 +184,21 @@ S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, co
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     return S2N_RESULT_OK;
 }
+
+static S2N_RESULT s2n_circle_stuffer_copy_impl(struct s2n_circle_stuffer *from, struct s2n_circle_stuffer *to, uint32_t len)
+{
+    RESULT_ENSURE_REF(from);
+    RESULT_ENSURE_REF(to);
+
+
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_circle_stuffer_copy(struct s2n_circle_stuffer *from, struct s2n_circle_stuffer *to, uint32_t len)
+{
+    RESULT_ENSURE_REF(from);
+    RESULT_ENSURE_REF(to);
+
+    return S2N_RESULT_OK;
+}
