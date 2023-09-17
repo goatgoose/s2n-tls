@@ -76,6 +76,25 @@ S2N_RESULT s2n_circle_stuffer_space_remaining(struct s2n_circle_stuffer *stuffer
     return S2N_RESULT_OK;
 }
 
+S2N_RESULT s2n_circle_stuffer_skip_read(struct s2n_circle_stuffer *stuffer, uint32_t n)
+{
+    RESULT_ENSURE_REF(stuffer);
+
+    uint32_t data_available = 0;
+    RESULT_GUARD(s2n_circle_stuffer_data_available(stuffer, &data_available));
+    RESULT_ENSURE_LTE(n, data_available);
+
+    if (n == 0) {
+        return S2N_RESULT_OK;
+    }
+
+    stuffer->full = false;
+    stuffer->read_pos = (stuffer->read_pos + n) % stuffer->blob.size;
+
+    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
+    return S2N_RESULT_OK;
+}
+
 S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out)
 {
     RESULT_ENSURE_REF(stuffer);
@@ -112,6 +131,24 @@ S2N_RESULT s2n_circle_stuffer_read_bytes(struct s2n_circle_stuffer *stuffer, uin
     return S2N_RESULT_OK;
 }
 
+S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, const uint32_t n)
+{
+    RESULT_ENSURE_REF(stuffer);
+
+    uint32_t space_remaining = 0;
+    RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
+    RESULT_ENSURE_LTE(n, space_remaining);
+
+    stuffer->write_pos = (stuffer->write_pos + n) % stuffer->blob.size;
+
+    if (stuffer->write_pos == stuffer->read_pos) {
+        stuffer->full = true;
+    }
+
+    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
+    return S2N_RESULT_OK;
+}
+
 S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const struct s2n_blob *in)
 {
     RESULT_ENSURE_REF(stuffer);
@@ -142,43 +179,6 @@ S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, co
     if (remaining_len > 0) {
         RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, data + first_chunk_len, remaining_len);
         RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, remaining_len));
-    }
-
-    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
-    return S2N_RESULT_OK;
-}
-
-S2N_RESULT s2n_circle_stuffer_skip_read(struct s2n_circle_stuffer *stuffer, uint32_t n)
-{
-    RESULT_ENSURE_REF(stuffer);
-
-    uint32_t data_available = 0;
-    RESULT_GUARD(s2n_circle_stuffer_data_available(stuffer, &data_available));
-    RESULT_ENSURE_LTE(n, data_available);
-
-    if (n == 0) {
-        return S2N_RESULT_OK;
-    }
-
-    stuffer->full = false;
-    stuffer->read_pos = (stuffer->read_pos + n) % stuffer->blob.size;
-
-    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
-    return S2N_RESULT_OK;
-}
-
-S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, const uint32_t n)
-{
-    RESULT_ENSURE_REF(stuffer);
-
-    uint32_t space_remaining = 0;
-    RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
-    RESULT_ENSURE_LTE(n, space_remaining);
-
-    stuffer->write_pos = (stuffer->write_pos + n) % stuffer->blob.size;
-
-    if (stuffer->write_pos == stuffer->read_pos) {
-        stuffer->full = true;
     }
 
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
