@@ -98,35 +98,35 @@ S2N_RESULT s2n_circle_stuffer_erase_and_read_bytes(struct s2n_circle_stuffer *st
 
 S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const struct s2n_blob *in)
 {
+    return s2n_circle_stuffer_write_bytes(stuffer, in->data, in->size);
+}
+
+S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, const uint8_t *data, const uint32_t size)
+{
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
-    RESULT_ENSURE_REF(in);
+    RESULT_ENSURE_REF(data);
 
     uint32_t space_remaining = 0;
     RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
-    RESULT_ENSURE_LTE(in->size, space_remaining);
+    RESULT_ENSURE_LTE(size, space_remaining);
 
     uint32_t in_offset = 0;
     if (stuffer->read_pos <= stuffer->write_pos) {
-        in_offset = MIN(in->size, stuffer->blob.size - stuffer->write_pos);
+        in_offset = MIN(size, stuffer->blob.size - stuffer->write_pos);
         if (in_offset > 0) {
-            RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, in->data, in_offset);
+            RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, data, in_offset);
             RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, in_offset));
         }
     }
 
-    uint32_t remaining_len = MIN(in->size - in_offset, stuffer->read_pos);
+    uint32_t remaining_len = MIN(size - in_offset, stuffer->read_pos);
     if (remaining_len > 0) {
-        RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, in->data + in_offset, remaining_len);
+        RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, data + in_offset, remaining_len);
         RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, remaining_len));
     }
 
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     return S2N_RESULT_OK;
-}
-
-S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, const uint8_t *in, const uint32_t n)
-{
-    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
 }
 
 S2N_RESULT s2n_circle_stuffer_writev_bytes(struct s2n_circle_stuffer *stuffer, const struct iovec *iov, size_t iov_count,
@@ -142,7 +142,7 @@ S2N_RESULT s2n_circle_stuffer_skip_read(struct s2n_circle_stuffer *stuffer, uint
 
 S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, const uint32_t n)
 {
-    RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
+    RESULT_ENSURE_REF(stuffer);
 
     uint32_t space_remaining = 0;
     RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
