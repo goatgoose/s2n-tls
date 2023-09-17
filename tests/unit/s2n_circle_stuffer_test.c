@@ -66,12 +66,12 @@ int main(int argc, char **argv)
                         continue;
                     }
 
-                    uint32_t chunk_1_end_pos = MIN(len, sizeof(test_data) - write_start_pos);
-                    EXPECT_BYTEARRAY_EQUAL(stuffer_data + write_start_pos, test_data, chunk_1_end_pos);
+                    uint32_t chunk_1_len = MIN(len, sizeof(test_data) - write_start_pos);
+                    EXPECT_BYTEARRAY_EQUAL(stuffer_data + write_start_pos, test_data, chunk_1_len);
 
-                    uint32_t chunk_2_end_pos = len - chunk_1_end_pos;
-                    if (chunk_2_end_pos > 0) {
-                        EXPECT_BYTEARRAY_EQUAL(stuffer_data, test_data + chunk_1_end_pos, chunk_2_end_pos);
+                    uint32_t chunk_2_len = len - chunk_1_len;
+                    if (chunk_2_len > 0) {
+                        EXPECT_BYTEARRAY_EQUAL(stuffer_data, test_data + chunk_1_len, chunk_2_len);
                     }
                 }
             }
