@@ -81,7 +81,17 @@ S2N_RESULT s2n_circle_stuffer_read(struct s2n_circle_stuffer *stuffer, struct s2
     RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
 }
 
+S2N_RESULT s2n_circle_stuffer_read_bytes(struct s2n_circle_stuffer *stuffer, uint8_t *out, uint32_t len)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
 S2N_RESULT s2n_circle_stuffer_erase_and_read(struct s2n_circle_stuffer *stuffer, struct s2n_blob *out)
+{
+    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
+}
+
+S2N_RESULT s2n_circle_stuffer_erase_and_read_bytes(struct s2n_circle_stuffer *stuffer, uint8_t *data, uint32_t size)
 {
     RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
 }
@@ -112,16 +122,6 @@ S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const st
 
     RESULT_GUARD(s2n_circle_stuffer_validate(stuffer));
     return S2N_RESULT_OK;
-}
-
-S2N_RESULT s2n_circle_stuffer_read_bytes(struct s2n_circle_stuffer *stuffer, uint8_t *out, uint32_t n)
-{
-    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
-}
-
-S2N_RESULT s2n_circle_stuffer_erase_and_read_bytes(struct s2n_circle_stuffer *stuffer, uint8_t *data, uint32_t size)
-{
-    RESULT_BAIL(S2N_ERR_UNIMPLEMENTED);
 }
 
 S2N_RESULT s2n_circle_stuffer_write_bytes(struct s2n_circle_stuffer *stuffer, const uint8_t *in, const uint32_t n)
