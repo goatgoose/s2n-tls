@@ -106,7 +106,7 @@ S2N_RESULT s2n_circle_stuffer_write(struct s2n_circle_stuffer *stuffer, const st
 
     uint32_t remaining_len = MIN(in->size - in_offset, stuffer->read_pos);
     if (remaining_len > 0) {
-        RESULT_CHECKED_MEMCPY(stuffer->blob.data, in->data + in_offset, remaining_len);
+        RESULT_CHECKED_MEMCPY(stuffer->blob.data + stuffer->write_pos, in->data + in_offset, remaining_len);
         RESULT_GUARD(s2n_circle_stuffer_skip_write(stuffer, remaining_len));
     }
 
@@ -148,7 +148,7 @@ S2N_RESULT s2n_circle_stuffer_skip_write(struct s2n_circle_stuffer *stuffer, con
     RESULT_GUARD(s2n_circle_stuffer_space_remaining(stuffer, &space_remaining));
     RESULT_ENSURE_LTE(n, space_remaining);
 
-    stuffer->write_pos = stuffer->write_pos + n % stuffer->blob.size;
+    stuffer->write_pos = (stuffer->write_pos + n) % stuffer->blob.size;
 
     if (stuffer->write_pos == stuffer->read_pos) {
         stuffer->full = true;
