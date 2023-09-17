@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 
                 struct s2n_blob test_blob = { 0 };
                 EXPECT_SUCCESS(s2n_blob_init(&test_blob, test_data, len));
-                
+
                 stuffer.read_pos = read_start_pos;
                 stuffer.write_pos = write_start_pos;
 
@@ -66,6 +66,52 @@ int main(int argc, char **argv)
                 uint32_t chunk_2_len = len - chunk_1_len;
                 if (chunk_2_len > 0) {
                     EXPECT_BYTEARRAY_EQUAL(stuffer_data, test_data + chunk_1_len, chunk_2_len);
+                }
+            }
+        }
+    }
+
+    /* Test s2n_circle_stuffer_read */
+    for (int read_amount = 0; read_amount < sizeof(test_data); read_amount++) {
+        for (int read_start_pos = 0; read_start_pos < sizeof(test_data); read_start_pos++) {
+            for (int write_start_pos = 0; write_start_pos < sizeof(test_data); write_start_pos++) {
+                uint8_t stuffer_data[sizeof(test_data)] = { 0 };
+                struct s2n_blob stuffer_blob = { 0 };
+                EXPECT_SUCCESS(s2n_blob_init(&stuffer_blob, stuffer_data, sizeof(stuffer_data)));
+
+                struct s2n_circle_stuffer stuffer = { 0 };
+                EXPECT_OK(s2n_circle_stuffer_init(&stuffer, &stuffer_blob));
+                EXPECT_OK(s2n_circle_stuffer_write(&stuffer, &test_data_blob));
+
+                uint8_t read_data[sizeof(test_data)] = { 0 };
+                struct s2n_blob read_blob = { 0 };
+                EXPECT_SUCCESS(s2n_blob_init(&read_blob, read_data, read_amount));
+
+                stuffer.full = false;
+                stuffer.read_pos = read_start_pos;
+                stuffer.write_pos = write_start_pos;
+
+                uint32_t data_available = 0;
+                if (stuffer.read_pos <= stuffer.write_pos) {
+                    data_available = stuffer.write_pos - stuffer.read_pos;
+                } else {
+                    data_available = stuffer.blob.size - stuffer.read_pos + stuffer.write_pos;
+                }
+
+                s2n_result result = s2n_circle_stuffer_read(&stuffer, &read_blob);
+                if (read_amount <= data_available) {
+                    EXPECT_OK(result);
+                } else {
+                    EXPECT_ERROR_WITH_ERRNO(result, S2N_ERR_SAFETY);
+                    continue;
+                }
+
+                uint32_t first_chunk_len = MIN(read_amount, sizeof(test_data) - read_start_pos);
+                EXPECT_BYTEARRAY_EQUAL(read_data, test_data + read_start_pos, first_chunk_len);
+
+                uint32_t remaining_len = read_amount - first_chunk_len;
+                if (remaining_len > 0) {
+                    EXPECT_BYTEARRAY_EQUAL(read_data + first_chunk_len, test_data, remaining_len);
                 }
             }
         }
