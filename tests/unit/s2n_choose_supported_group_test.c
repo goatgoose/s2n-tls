@@ -59,7 +59,7 @@ int main()
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_params.kem);
             EXPECT_NULL(server_conn->kex_params.server_ecc_evp_params.negotiated_curve);
 
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_group);
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve);
@@ -97,7 +97,7 @@ int main()
             }
 
             server_conn->kex_params.mutually_supported_curves[1] = ecc_pref->ecc_curves[1];
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_group);
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve);
@@ -129,7 +129,7 @@ int main()
                 EXPECT_NULL(server_conn->kex_params.mutually_supported_kem_groups[i]);
             }
 
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_group);
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve);
@@ -196,7 +196,7 @@ int main()
                 EXPECT_NULL(server_conn->kex_params.mutually_supported_kem_groups[i]);
             }
 
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_group);
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve);
@@ -234,7 +234,7 @@ int main()
                 server_conn->kex_params.mutually_supported_kem_groups[i] = kem_pref->tls13_kem_groups[i];
             }
 
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_EQUAL(server_conn->kex_params.server_kem_group_params.kem_group, kem_pref->tls13_kem_groups[0]);
             EXPECT_EQUAL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve, kem_pref->tls13_kem_groups[0]->curve);
@@ -274,7 +274,7 @@ int main()
             }
 
             server_conn->kex_params.mutually_supported_kem_groups[1] = kem_pref->tls13_kem_groups[1];
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_EQUAL(server_conn->kex_params.server_kem_group_params.kem_group, kem_pref->tls13_kem_groups[1]);
             EXPECT_EQUAL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve, kem_pref->tls13_kem_groups[1]->curve);
@@ -311,7 +311,7 @@ int main()
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_params.kem);
             EXPECT_NULL(server_conn->kex_params.server_ecc_evp_params.negotiated_curve);
 
-            EXPECT_SUCCESS(s2n_choose_supported_group(server_conn));
+            EXPECT_SUCCESS(s2n_supported_groups_set_selected_group(server_conn));
 
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.kem_group);
             EXPECT_NULL(server_conn->kex_params.server_kem_group_params.ecc_params.negotiated_curve);
