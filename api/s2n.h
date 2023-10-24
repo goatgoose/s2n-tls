@@ -2935,6 +2935,22 @@ S2N_API extern const char *s2n_connection_get_kem_name(struct s2n_connection *co
 S2N_API extern const char *s2n_connection_get_kem_group_name(struct s2n_connection *conn);
 
 /**
+ * Gets the server's highest priority compatible group received in the client's supported groups extension.
+ *
+ * This API can be called on server connections to query the client's supported groups extension for a mutually
+ * compatible group. Note that if a mutually supported group is received from the client, the group will always be
+ * returned, regardless of whether or not the group was actually used for key exchange.
+ *
+ * If the client does not send a supported groups extension, or does not send a group that's supported by the server
+ * connection, this API will return S2N_SUCCESS and `group_iana` will be set to 0.
+ *
+ * @param conn A pointer to the s2n_connection object.
+ * @param group_iana A pointer that's set to the mutually compatible supported group.
+ * @returns S2N_SUCCESS on success. S2N_FAILURE on failure.
+ */
+S2N_API extern int s2n_connection_get_mutually_supported_group(struct s2n_connection *conn, uint8_t *group_iana);
+
+/**
  * Function to get the alert that caused a connection to close. s2n-tls considers all
  * TLS alerts fatal and shuts down a connection whenever one is received.
  *
