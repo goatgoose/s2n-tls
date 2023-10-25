@@ -26,5 +26,8 @@ bool s2n_extension_should_send_if_ecc_enabled(struct s2n_connection *conn);
 
 S2N_RESULT s2n_supported_groups_parse_count(struct s2n_stuffer *extension, uint16_t *count);
 
+S2N_RESULT s2n_supported_groups_select_kem_or_curve(struct s2n_connection *conn, const struct s2n_kem_group **kem_group,
+        const struct s2n_ecc_named_curve **ecc_curve);
+
 /* Old-style extension functions -- remove after extensions refactor is complete */
 int s2n_recv_client_supported_groups(struct s2n_connection *conn, struct s2n_stuffer *extension);

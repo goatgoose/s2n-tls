@@ -32,6 +32,7 @@
 #include "crypto/s2n_openssl_x509.h"
 #include "error/s2n_errno.h"
 #include "tls/extensions/s2n_client_server_name.h"
+#include "tls/extensions/s2n_client_supported_groups.h"
 #include "tls/s2n_alerts.h"
 #include "tls/s2n_cipher_suites.h"
 #include "tls/s2n_handshake.h"
@@ -936,6 +937,27 @@ const char *s2n_connection_get_kem_group_name(struct s2n_connection *conn)
     }
 
     return conn->kex_params.client_kem_group_params.kem_group->name;
+}
+
+int s2n_connection_get_mutually_compatible_group(struct s2n_connection *conn, uint16_t *group_iana)
+{
+    POSIX_ENSURE_REF(conn);
+    POSIX_ENSURE_REF(group_iana);
+    *group_iana = 0;
+
+    POSIX_ENSURE(conn->mode == S2N_SERVER, S2N_ERR_CLIENT_MODE);
+
+    const struct s2n_kem_group *kem_group = NULL;
+    const struct s2n_ecc_named_curve *ecc_curve = NULL;
+    POSIX_GUARD_RESULT(s2n_supported_groups_select_kem_or_curve(conn, &kem_group, &ecc_curve));
+
+    if (kem_group) {
+        *group_iana = kem_group->iana_id;
+    } else if (ecc_curve) {
+        *group_iana = ecc_curve->iana_id;
+    }
+
+    return S2N_SUCCESS;
 }
 
 int s2n_connection_get_client_protocol_version(struct s2n_connection *conn)

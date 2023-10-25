@@ -136,8 +136,8 @@ static int s2n_client_supported_groups_recv_iana_id(struct s2n_connection *conn,
     return S2N_SUCCESS;
 }
 
-static S2N_RESULT s2n_supported_groups_select_kem_or_curve(struct s2n_connection *conn,
-        const struct s2n_kem_group **kem_group, const struct s2n_ecc_named_curve **ecc_curve)
+S2N_RESULT s2n_supported_groups_select_kem_or_curve(struct s2n_connection *conn, const struct s2n_kem_group **kem_group,
+        const struct s2n_ecc_named_curve **ecc_curve)
 {
     RESULT_ENSURE_REF(conn);
     RESULT_ENSURE_REF(kem_group);
