@@ -788,25 +788,25 @@ static int s2n_random_rand_bytes_after_cleanup_cb(struct random_test_case *test_
     return S2N_SUCCESS;
 }
 
+int s2n_rand_init_impl(void);
+int s2n_rand_cleanup_impl(void);
+int s2n_rand_urandom_impl(void *ptr, uint32_t size);
+
 static int s2n_random_rand_bytes_invalid_fd_cb(struct random_test_case *test_case)
 {
-    /* Close all file descriptors */
-//    long fd_limit_ = sysconf(_SC_OPEN_MAX);
-//    EXPECT_TRUE(fd_limit_ <= INT_MAX);
-//    int fd_limit = (int) fd_limit_;
-//    for (int i = STDERR_FILENO + 1; i < fd_limit; i++) {
-//        EXPECT_EQUAL(close(i), 0);
-//    }
-
     EXPECT_SUCCESS(s2n_init());
-    printf("init!\n");
+
+    /* The entropy file descriptor is read from s2n_rand_urandom_impl(). If support for rdrand is
+     * detected, s2n_rand_init_impl() sets the mix callback to rdrand. s2n_rand_set_callbacks() is
+     * called after s2n_init() to force the mix callback to use urandom, even if rdrand is
+     * supported.
+     */
+    EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
 
     EXPECT_EQUAL(close(3), 0);
 
     unsigned char rand_bytes[16];
     EXPECT_EQUAL(RAND_bytes(rand_bytes, sizeof(rand_bytes)), 1);
-
-    printf("test!\n");
 
     return S2N_SUCCESS;
 }
