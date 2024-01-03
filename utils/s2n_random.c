@@ -334,6 +334,7 @@ S2N_RESULT s2n_get_private_random_bytes_used(uint64_t *bytes_used)
 
 static int s2n_rand_urandom_impl(void *ptr, uint32_t size)
 {
+    printf("urandom impl!\n");
     POSIX_ENSURE(entropy_fd != UNINITIALIZED_ENTROPY_FD, S2N_ERR_NOT_INITIALIZED);
 
     uint8_t *data = ptr;
@@ -464,6 +465,9 @@ OPEN:
     if (s2n_cpu_supports_rdrand()) {
         s2n_rand_mix_cb = s2n_rand_rdrand_impl;
     }
+
+    s2n_rand_mix_cb = s2n_rand_urandom_impl;
+    printf("entropy_fd: %d\n", entropy_fd);
 
     return S2N_SUCCESS;
 }
