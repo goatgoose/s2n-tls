@@ -792,18 +792,19 @@ int s2n_rand_init_impl(void);
 int s2n_rand_cleanup_impl(void);
 int s2n_rand_urandom_impl(void *ptr, uint32_t size);
 
-static int s2n_random_rand_bytes_invalid_fd_cb(struct random_test_case *test_case)
+static int s2n_random_rand_bytes_closed_fd_cb(struct random_test_case *test_case)
 {
+    struct s2n_rand_device device = { 0 };
+    EXPECT_OK(s2n_rand_get_dev_urandom(&device));
+    EXPECT_EQUAL(device.fd, -1);
+
     EXPECT_SUCCESS(s2n_init());
 
-    /* The entropy file descriptor is read from s2n_rand_urandom_impl(). If support for rdrand is
-     * detected, s2n_rand_init_impl() sets the mix callback to rdrand. s2n_rand_set_callbacks() is
-     * called after s2n_init() to force the mix callback to use urandom, even if rdrand is
-     * supported.
-     */
+    /* Override the mix callback with urandom, in case rdrand is supported. */
     EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
-
-    EXPECT_EQUAL(close(3), 0);
+    
+    EXPECT_TRUE(device.fd > STDERR_FILENO);
+    EXPECT_EQUAL(close(device.fd), 0);
 
     unsigned char rand_bytes[16];
     EXPECT_EQUAL(RAND_bytes(rand_bytes, sizeof(rand_bytes)), 1);
@@ -823,7 +824,7 @@ struct random_test_case random_test_cases[] = {
 //     */
 //    { "Test failure.", s2n_random_test_case_failure_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, 1 },
 //    { "Test libcrypto's RAND engine is reset correctly after manual s2n_cleanup()", s2n_random_rand_bytes_after_cleanup_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-    { "Test random with invalid file descriptor", s2n_random_rand_bytes_invalid_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Test random with invalid file descriptor", s2n_random_rand_bytes_closed_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
 };
 
 int main(int argc, char **argv)

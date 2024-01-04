@@ -340,7 +340,35 @@ S2N_RESULT s2n_get_private_random_bytes_used(uint64_t *bytes_used)
     return S2N_RESULT_OK;
 }
 
-S2N_RESULT s2n_rand_device_init(struct s2n_rand_device *device)
+S2N_RESULT s2n_rand_get_dev_urandom(struct s2n_rand_device *device)
+{
+    RESULT_ENSURE_REF(device);
+    device = &s2n_dev_urandom;
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_rand_device_validate(struct s2n_rand_device *device)
+{
+    RESULT_ENSURE_REF(device);
+
+    RESULT_ENSURE_NE(device->fd, UNINITIALIZED_ENTROPY_FD);
+
+    /* Ensure that the random device is still valid by comparing it to the current status.
+     * From: https://github.com/openssl/openssl/blob/260d97229c467d17934ca3e2e0455b1b5c0994a6/providers/implementations/rands/seeding/rand_unix.c#L513
+     */
+    struct stat st = { 0 };
+    RESULT_ENSURE(fstat(device->fd, &st) == 0, S2N_ERR_OPEN_RANDOM);
+    RESULT_ENSURE_EQ(device->dev, st.st_dev);
+    RESULT_ENSURE_EQ(device->ino, st.st_ino);
+    RESULT_ENSURE_EQ(device->rdev, st.st_rdev);
+
+    /* Ensure that the mode is the same, but don't check the permission bits. */
+    RESULT_ENSURE_EQ((device->mode ^ st.st_mode) & ~(S_IRWXU | S_IRWXG | S_IRWXO), 0);
+
+    return S2N_RESULT_OK;
+}
+
+S2N_RESULT s2n_rand_device_open(struct s2n_rand_device *device)
 {
     RESULT_ENSURE_REF(device);
     RESULT_ENSURE_REF(device->source);
@@ -352,6 +380,7 @@ S2N_RESULT s2n_rand_device_init(struct s2n_rand_device *device)
             RESULT_BAIL(S2N_ERR_OPEN_RANDOM);
         }
     }
+    device->fd = fd;
 
     struct stat st = { 0 };
     RESULT_ENSURE(fstat(fd, &st) == 0, S2N_ERR_OPEN_RANDOM);
@@ -360,29 +389,10 @@ S2N_RESULT s2n_rand_device_init(struct s2n_rand_device *device)
     device->mode = st.st_mode;
     device->rdev = st.st_rdev;
 
-    device->fd = fd;
+    RESULT_GUARD(s2n_rand_device_validate(device));
 
     /* Disable closing the file descriptor with defer cleanup */
     fd = UNINITIALIZED_ENTROPY_FD;
-
-    return S2N_RESULT_OK;
-}
-
-S2N_RESULT s2n_rand_device_validate(struct s2n_rand_device *device)
-{
-    RESULT_ENSURE_REF(device);
-
-    RESULT_ENSURE_NE(device->fd, UNINITIALIZED_ENTROPY_FD);
-
-    /* Ensure that the random device is still valid by comparing it to current stat(2) information.
-     * From: https://github.com/openssl/openssl/blob/260d97229c467d17934ca3e2e0455b1b5c0994a6/providers/implementations/rands/seeding/rand_unix.c#L513
-     */
-    struct stat st = { 0 };
-    RESULT_ENSURE(fstat(device->fd, &st), S2N_ERR_OPEN_RANDOM);
-    RESULT_ENSURE_EQ(device->dev, st.st_dev);
-    RESULT_ENSURE_EQ(device->ino, st.st_ino);
-    RESULT_ENSURE_EQ(device->mode, st.st_mode);
-    RESULT_ENSURE_EQ(device->rdev, st.st_rdev);
 
     return S2N_RESULT_OK;
 }
@@ -392,7 +402,7 @@ S2N_RESULT s2n_rand_device_get_valid_fd(struct s2n_rand_device *device, int *fd)
     RESULT_ENSURE_REF(device);
 
     if (s2n_result_is_error(s2n_rand_device_validate(device))) {
-        RESULT_GUARD(s2n_rand_device_init(device));
+        RESULT_GUARD(s2n_rand_device_open(device));
     }
 
     *fd = device->fd;
@@ -524,7 +534,7 @@ RAND_METHOD s2n_openssl_rand_method = {
 
 int s2n_rand_init_impl(void)
 {
-    POSIX_GUARD_RESULT(s2n_rand_device_init(&s2n_dev_urandom));
+    POSIX_GUARD_RESULT(s2n_rand_device_open(&s2n_dev_urandom));
 
     if (s2n_cpu_supports_rdrand()) {
         s2n_rand_mix_cb = s2n_rand_rdrand_impl;
