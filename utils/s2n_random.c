@@ -340,10 +340,11 @@ S2N_RESULT s2n_get_private_random_bytes_used(uint64_t *bytes_used)
     return S2N_RESULT_OK;
 }
 
-S2N_RESULT s2n_rand_get_dev_urandom(struct s2n_rand_device *device)
+S2N_RESULT s2n_rand_get_dev_urandom(struct s2n_rand_device **device)
 {
     RESULT_ENSURE_REF(device);
-    device = &s2n_dev_urandom;
+    RESULT_ENSURE(s2n_in_unit_test(), S2N_ERR_NOT_IN_UNIT_TEST);
+    *device = &s2n_dev_urandom;
     return S2N_RESULT_OK;
 }
 
@@ -362,8 +363,9 @@ S2N_RESULT s2n_rand_device_validate(struct s2n_rand_device *device)
     RESULT_ENSURE_EQ(device->ino, st.st_ino);
     RESULT_ENSURE_EQ(device->rdev, st.st_rdev);
 
-    /* Ensure that the mode is the same, but don't check the permission bits. */
-    RESULT_ENSURE_EQ((device->mode ^ st.st_mode) & ~(S_IRWXU | S_IRWXG | S_IRWXO), 0);
+    /* Ensure that the mode is the same (equal to 0 when xor'd), but don't check the permission bits. */
+    mode_t permission_mask = ~(S_IRWXU | S_IRWXG | S_IRWXO);
+    RESULT_ENSURE_EQ((device->mode ^ st.st_mode) & permission_mask, 0);
 
     return S2N_RESULT_OK;
 }
@@ -380,7 +382,6 @@ S2N_RESULT s2n_rand_device_open(struct s2n_rand_device *device)
             RESULT_BAIL(S2N_ERR_OPEN_RANDOM);
         }
     }
-    device->fd = fd;
 
     struct stat st = { 0 };
     RESULT_ENSURE(fstat(fd, &st) == 0, S2N_ERR_OPEN_RANDOM);
@@ -389,7 +390,7 @@ S2N_RESULT s2n_rand_device_open(struct s2n_rand_device *device)
     device->mode = st.st_mode;
     device->rdev = st.st_rdev;
 
-    RESULT_GUARD(s2n_rand_device_validate(device));
+    device->fd = fd;
 
     /* Disable closing the file descriptor with defer cleanup */
     fd = UNINITIALIZED_ENTROPY_FD;
