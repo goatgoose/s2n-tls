@@ -801,22 +801,29 @@ static int s2n_random_rand_bytes_closed_fd_cb(struct random_test_case *test_case
     EXPECT_NOT_NULL(dev_urandom);
     EXPECT_EQUAL(dev_urandom->fd, -1);
 
+    /* Validation should fail before initialization. */
+    EXPECT_ERROR(s2n_rand_device_validate(dev_urandom));
+
     EXPECT_SUCCESS(s2n_init());
+
+    /* Override the mix callback with urandom, in case rdrand is supported. */
+    EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
 
     /* Validation should succeed after initialization. */
     EXPECT_OK(s2n_rand_device_validate(dev_urandom));
 
+    /* Close the file descriptor. */
     EXPECT_TRUE(dev_urandom->fd > STDERR_FILENO);
     EXPECT_EQUAL(close(dev_urandom->fd), 0);
 
     /* Validation should fail after the file descriptor is closed. */
     EXPECT_ERROR(s2n_rand_device_validate(dev_urandom));
 
-    /* Override the mix callback with urandom, in case rdrand is supported. */
-    EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
+    s2n_stack_blob(rand_data, 16, 16);
+    EXPECT_OK(s2n_get_public_random_data(&rand_data));
 
-    unsigned char rand_bytes[16];
-    EXPECT_EQUAL(RAND_bytes(rand_bytes, sizeof(rand_bytes)), 1);
+    /* Validation should succeed after the file descriptor has been re-opened. */
+    EXPECT_OK(s2n_rand_device_validate(dev_urandom));
 
     return S2N_SUCCESS;
 }
@@ -828,22 +835,29 @@ static int s2n_random_rand_bytes_invalid_fd_cb(struct random_test_case *test_cas
     EXPECT_NOT_NULL(dev_urandom);
     EXPECT_EQUAL(dev_urandom->fd, -1);
 
+    /* Validation should fail before initialization. */
+    EXPECT_ERROR(s2n_rand_device_validate(dev_urandom));
+
     EXPECT_SUCCESS(s2n_init());
+
+    /* Override the mix callback with urandom, in case rdrand is supported. */
+    EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
 
     /* Validation should succeed after initialization. */
     EXPECT_OK(s2n_rand_device_validate(dev_urandom));
 
+    /* Make the entropy file descriptor invalid by pointing it to STDERR. */
     EXPECT_TRUE(dev_urandom->fd > STDERR_FILENO);
     dev_urandom->fd = STDERR_FILENO;
 
     /* Validation should fail after the file descriptor is changed. */
     EXPECT_ERROR(s2n_rand_device_validate(dev_urandom));
 
-    /* Override the mix callback with urandom, in case rdrand is supported. */
-    EXPECT_SUCCESS(s2n_rand_set_callbacks(s2n_rand_init_impl, s2n_rand_cleanup_impl, s2n_rand_urandom_impl, s2n_rand_urandom_impl));
+    s2n_stack_blob(rand_data, 16, 16);
+    EXPECT_OK(s2n_get_public_random_data(&rand_data));
 
-    unsigned char rand_bytes[16];
-    EXPECT_EQUAL(RAND_bytes(rand_bytes, sizeof(rand_bytes)), 1);
+    /* Validation should succeed after the file descriptor has been re-opened. */
+    EXPECT_OK(s2n_rand_device_validate(dev_urandom));
 
     return S2N_SUCCESS;
 }
