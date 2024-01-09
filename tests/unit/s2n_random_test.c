@@ -48,6 +48,12 @@
 #define NUMBER_OF_RANGE_FUNCTION_CALLS 200
 #define MAX_REPEATED_OUTPUT            4
 
+S2N_RESULT s2n_rand_get_dev_urandom(struct s2n_rand_device **device);
+S2N_RESULT s2n_rand_device_validate(struct s2n_rand_device *device);
+int s2n_rand_init_impl(void);
+int s2n_rand_cleanup_impl(void);
+int s2n_rand_urandom_impl(void *ptr, uint32_t size);
+
 struct random_test_case {
     const char *test_case_label;
     int (*test_case_cb)(struct random_test_case *test_case);
@@ -788,13 +794,7 @@ static int s2n_random_rand_bytes_after_cleanup_cb(struct random_test_case *test_
     return S2N_SUCCESS;
 }
 
-S2N_RESULT s2n_rand_get_dev_urandom(struct s2n_rand_device **device);
-S2N_RESULT s2n_rand_device_validate(struct s2n_rand_device *device);
-int s2n_rand_init_impl(void);
-int s2n_rand_cleanup_impl(void);
-int s2n_rand_urandom_impl(void *ptr, uint32_t size);
-
-static int s2n_random_rand_bytes_closed_fd_cb(struct random_test_case *test_case)
+static int s2n_random_closed_urandom_fd_cb(struct random_test_case *test_case)
 {
     struct s2n_rand_device *dev_urandom = NULL;
     EXPECT_OK(s2n_rand_get_dev_urandom(&dev_urandom));
@@ -828,7 +828,7 @@ static int s2n_random_rand_bytes_closed_fd_cb(struct random_test_case *test_case
     return S2N_SUCCESS;
 }
 
-static int s2n_random_rand_bytes_invalid_fd_cb(struct random_test_case *test_case)
+static int s2n_random_invalid_urandom_fd_cb(struct random_test_case *test_case)
 {
     struct s2n_rand_device *dev_urandom = NULL;
     EXPECT_OK(s2n_rand_get_dev_urandom(&dev_urandom));
@@ -863,19 +863,19 @@ static int s2n_random_rand_bytes_invalid_fd_cb(struct random_test_case *test_cas
 }
 
 struct random_test_case random_test_cases[] = {
-//    { "Random API.", s2n_random_test_case_default_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-//    { "Random API without prediction resistance.", s2n_random_test_case_without_pr_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-//    { "Random API without prediction resistance and with only pthread_atfork fork detection mechanism.", s2n_random_test_case_without_pr_pthread_atfork_cb, CLONE_TEST_NO, EXIT_SUCCESS },
-//    { "Random API without prediction resistance and with only madv_wipeonfork fork detection mechanism.", s2n_random_test_case_without_pr_madv_wipeonfork_cb, CLONE_TEST_YES, EXIT_SUCCESS },
-//    { "Random API without prediction resistance and with only map_inheret_zero fork detection mechanism.", s2n_random_test_case_without_pr_map_inherit_zero_cb, CLONE_TEST_YES, EXIT_SUCCESS },
-//    { "Test destructor without s2n_init", s2n_random_noop_destructor_test_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-//    /* The s2n FAIL_MSG() macro uses exit(1) not exit(EXIT_FAILURE). So, we need
-//     * to use 1 below and in s2n_random_test_case_failure_cb().
-//     */
-//    { "Test failure.", s2n_random_test_case_failure_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, 1 },
-//    { "Test libcrypto's RAND engine is reset correctly after manual s2n_cleanup()", s2n_random_rand_bytes_after_cleanup_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-    { "Test getting entropy with a closed file descriptor", s2n_random_rand_bytes_closed_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
-    { "Test getting entropy with an invalid file descriptor", s2n_random_rand_bytes_invalid_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Random API.", s2n_random_test_case_default_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Random API without prediction resistance.", s2n_random_test_case_without_pr_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Random API without prediction resistance and with only pthread_atfork fork detection mechanism.", s2n_random_test_case_without_pr_pthread_atfork_cb, CLONE_TEST_NO, EXIT_SUCCESS },
+    { "Random API without prediction resistance and with only madv_wipeonfork fork detection mechanism.", s2n_random_test_case_without_pr_madv_wipeonfork_cb, CLONE_TEST_YES, EXIT_SUCCESS },
+    { "Random API without prediction resistance and with only map_inheret_zero fork detection mechanism.", s2n_random_test_case_without_pr_map_inherit_zero_cb, CLONE_TEST_YES, EXIT_SUCCESS },
+    { "Test destructor without s2n_init", s2n_random_noop_destructor_test_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    /* The s2n FAIL_MSG() macro uses exit(1) not exit(EXIT_FAILURE). So, we need
+     * to use 1 below and in s2n_random_test_case_failure_cb().
+     */
+    { "Test failure.", s2n_random_test_case_failure_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, 1 },
+    { "Test libcrypto's RAND engine is reset correctly after manual s2n_cleanup()", s2n_random_rand_bytes_after_cleanup_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Test getting entropy with a closed file descriptor", s2n_random_closed_urandom_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
+    { "Test getting entropy with an invalid file descriptor", s2n_random_invalid_urandom_fd_cb, CLONE_TEST_DETERMINE_AT_RUNTIME, EXIT_SUCCESS },
 };
 
 int main(int argc, char **argv)
