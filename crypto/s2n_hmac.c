@@ -82,8 +82,8 @@ bool s2n_hmac_is_available(s2n_hmac_algorithm hmac_alg)
     case S2N_HMAC_MD5:
     case S2N_HMAC_SSLv3_MD5:
     case S2N_HMAC_SSLv3_SHA1:
-        /* Set is_available to 0 if in FIPS mode, as MD5/SSLv3 algs are not available in FIPS mode. */
-        return !s2n_is_in_fips_mode();
+        /* Indicate whether MD5/SSLv3 is disabled due to the libcrypto FIPS mode. */
+        return s2n_feature_enabled_for_fips_mode();
     case S2N_HMAC_NONE:
     case S2N_HMAC_SHA1:
     case S2N_HMAC_SHA224:

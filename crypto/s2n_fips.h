@@ -23,6 +23,7 @@
 int s2n_fips_init(void);
 int s2n_is_in_fips_mode(void);
 bool s2n_libcrypto_is_fips(void);
+bool s2n_feature_enabled_for_fips_mode(void);
 
 struct s2n_cipher_suite;
 S2N_RESULT s2n_fips_validate_cipher_suite(const struct s2n_cipher_suite *cipher_suite, bool *valid);

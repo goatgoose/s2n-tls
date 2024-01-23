@@ -113,8 +113,8 @@ bool s2n_hash_is_available(s2n_hash_algorithm alg)
     switch (alg) {
         case S2N_HASH_MD5:
         case S2N_HASH_MD5_SHA1:
-            /* return false if in FIPS mode, as MD5 algs are not available in FIPS mode. */
-            return !s2n_is_in_fips_mode();
+            /* Indicate whether MD5 is disabled due to the libcrypto FIPS mode. */
+            return s2n_feature_enabled_for_fips_mode();
         case S2N_HASH_NONE:
         case S2N_HASH_SHA1:
         case S2N_HASH_SHA224:

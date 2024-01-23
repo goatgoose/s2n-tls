@@ -14,6 +14,7 @@
  */
 
 #include "crypto/s2n_fips.h"
+#include "crypto/s2n_openssl.h"
 
 #include <openssl/crypto.h>
 
@@ -59,4 +60,19 @@ int s2n_fips_init(void)
 int s2n_is_in_fips_mode(void)
 {
     return s2n_fips_mode;
+}
+
+bool s2n_feature_enabled_for_fips_mode(void)
+{
+    /* AWS-LC supports all features, regardless of its FIPS mode. */
+    if (s2n_libcrypto_is_awslc()) {
+        return true;
+    }
+
+    /* Other libcryptos, such as OpenSSL, disable some features in FIPS mode. */
+    if (s2n_is_in_fips_mode()) {
+        return false;
+    }
+
+    return true;
 }
