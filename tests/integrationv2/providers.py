@@ -165,7 +165,7 @@ class S2N(Provider):
                     return False
 
         # s2n-tls will not negotiate SSLv3 if in fips mode
-        if protocol == Protocols.SSLv3 and get_flag(S2N_FIPS_MODE) and "aws-lc" not in get_flag(S2N_PROVIDER_VERSION):
+        if protocol == Protocols.SSLv3 and get_flag(S2N_FIPS_MODE) and "awslc" not in get_flag(S2N_PROVIDER_VERSION):
             return False
 
         return True
@@ -187,7 +187,7 @@ class S2N(Provider):
                 for lc in unsupported_libcryptos:
                     # e.g. "openssl-3" in "openssl-3.0.7"
                     if lc in current_libcrypto:
-                        return Fale
+                        return False
         return True
 
     @classmethod
