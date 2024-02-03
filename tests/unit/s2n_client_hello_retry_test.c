@@ -725,7 +725,7 @@ int main(int argc, char **argv)
             EXPECT_SUCCESS(s2n_negotiate_test_server_and_client(server_conn, client_conn));
         };
 
-        /* Test: The server rejects a second ClientHello with changed message fields */
+        /* Test: The server rejects a second ClientHello with a changed legacy version */
         {
             DEFER_CLEANUP(struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER),
                     s2n_connection_ptr_free);
@@ -746,17 +746,176 @@ int main(int argc, char **argv)
             /* Force the HRR path */
             client_conn->security_policy_override = &security_policy_test_tls13_retry;
 
-            /* Send ClientHello */
+            /* Skip to before the client sends the second ClientHello. */
             s2n_blocked_status blocked = 0;
             EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, SERVER_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, HELLO_RETRY_MSG));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, CLIENT_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, CLIENT_HELLO));
+
+            /* Change the legacy version. */
+            client_conn->client_protocol_version = S2N_TLS11;
+
+            EXPECT_FAILURE_WITH_ERRNO(s2n_negotiate_test_server_and_client(server_conn, client_conn),
+                    S2N_ERR_BAD_MESSAGE);
+        }
+
+        /* Test: The server accepts a second ClientHello with a changed session ID */
+        for (size_t test_in_test_mode = 0; test_in_test_mode <= 1; test_in_test_mode++) {
+            DEFER_CLEANUP(struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(server_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config));
+
+            DEFER_CLEANUP(struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(client_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(client_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(client_conn, config));
+
+            struct s2n_test_io_pair io_pair = { 0 };
+            EXPECT_SUCCESS(s2n_io_pair_init_non_blocking(&io_pair));
+            EXPECT_SUCCESS(s2n_connections_set_io_pair(client_conn, server_conn, &io_pair));
+
+            /* Force the HRR path */
+            client_conn->security_policy_override = &security_policy_test_tls13_retry;
+
+            /* Skip to before the client sends the second ClientHello. */
+            s2n_blocked_status blocked = 0;
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, SERVER_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, HELLO_RETRY_MSG));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, CLIENT_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, CLIENT_HELLO));
 
             /* Change session id */
             client_conn->session_id[0]++;
 
-            /* Expect failure because second client hello doesn't match */
+            if (test_in_test_mode) {
+                /* Ensure that validation fails in test mode to prevent regressions. */
+                EXPECT_FAILURE_WITH_ERRNO(s2n_negotiate_test_server_and_client(server_conn, client_conn),
+                        S2N_ERR_BAD_MESSAGE);
+            } else {
+                EXPECT_SUCCESS(s2n_in_unit_test_set(false));
+                EXPECT_SUCCESS(s2n_negotiate_test_server_and_client(server_conn, client_conn));
+                EXPECT_SUCCESS(s2n_in_unit_test_set(true));
+            }
+        };
+
+        /* Test: The server accepts a second ClientHello with a changed cipher suites list */
+        for (size_t test_in_test_mode = 0; test_in_test_mode <= 1; test_in_test_mode++) {
+            DEFER_CLEANUP(struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(server_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config));
+
+            DEFER_CLEANUP(struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(client_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(client_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(client_conn, config));
+
+            struct s2n_test_io_pair io_pair = { 0 };
+            EXPECT_SUCCESS(s2n_io_pair_init_non_blocking(&io_pair));
+            EXPECT_SUCCESS(s2n_connections_set_io_pair(client_conn, server_conn, &io_pair));
+
+            struct s2n_security_policy test_policy = security_policy_test_tls13_retry;
+            struct s2n_cipher_suite *test_cipher_suites[] = {
+                &s2n_tls13_aes_128_gcm_sha256,
+                &s2n_tls13_aes_256_gcm_sha384
+            };
+            struct s2n_cipher_preferences test_cipher_preferences = {
+                .count = s2n_array_len(test_cipher_suites),
+                .suites = test_cipher_suites,
+            };
+            test_policy.cipher_preferences = &test_cipher_preferences;
+
+            /* Force the HRR path. */
+            client_conn->security_policy_override = &test_policy;
+
+            /* Skip to before the client sends the second ClientHello. */
+            s2n_blocked_status blocked = 0;
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, SERVER_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, HELLO_RETRY_MSG));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, CLIENT_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, CLIENT_HELLO));
+
+            /* Modify a cipher suite. */
+            test_cipher_suites[1] = &s2n_tls13_chacha20_poly1305_sha256;
+
+            if (test_in_test_mode) {
+                /* Ensure that validation fails in test mode to prevent regressions. */
+                EXPECT_FAILURE_WITH_ERRNO(s2n_negotiate_test_server_and_client(server_conn, client_conn),
+                        S2N_ERR_BAD_MESSAGE);
+            } else {
+                EXPECT_SUCCESS(s2n_in_unit_test_set(false));
+                EXPECT_SUCCESS(s2n_negotiate_test_server_and_client(server_conn, client_conn));
+                EXPECT_SUCCESS(s2n_in_unit_test_set(true));
+            }
+        }
+
+        /* Test: Ensure that the connection fails if the cipher suite list changes such that the
+         * server cannot negotiate its original selection from the first ClientHello
+         *
+         *= https://tools.ietf.org/rfc/rfc8446#4.1.4
+         *= type=test
+         *# Servers MUST ensure that they negotiate the
+         *# same cipher suite when receiving a conformant updated ClientHello (if
+         *# the server selects the cipher suite as the first step in the
+         *# negotiation, then this will happen automatically).
+         **/
+        {
+            DEFER_CLEANUP(struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(server_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(server_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(server_conn, config));
+
+            DEFER_CLEANUP(struct s2n_connection *client_conn = s2n_connection_new(S2N_CLIENT),
+                    s2n_connection_ptr_free);
+            EXPECT_NOT_NULL(client_conn);
+            EXPECT_SUCCESS(s2n_connection_set_blinding(client_conn, S2N_SELF_SERVICE_BLINDING));
+            EXPECT_SUCCESS(s2n_connection_set_config(client_conn, config));
+
+            struct s2n_test_io_pair io_pair = { 0 };
+            EXPECT_SUCCESS(s2n_io_pair_init_non_blocking(&io_pair));
+            EXPECT_SUCCESS(s2n_connections_set_io_pair(client_conn, server_conn, &io_pair));
+
+            struct s2n_security_policy test_policy = security_policy_test_tls13_retry;
+            struct s2n_cipher_suite *test_cipher_suites[] = {
+                &s2n_tls13_aes_128_gcm_sha256,
+                &s2n_tls13_aes_256_gcm_sha384
+            };
+            struct s2n_cipher_preferences test_cipher_preferences = {
+                .count = s2n_array_len(test_cipher_suites),
+                .suites = test_cipher_suites,
+            };
+            test_policy.cipher_preferences = &test_cipher_preferences;
+
+            /* Force the HRR path. */
+            client_conn->security_policy_override = &test_policy;
+
+            /* Skip to before the client sends the second ClientHello. */
+            s2n_blocked_status blocked = 0;
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, SERVER_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, HELLO_RETRY_MSG));
+            EXPECT_OK(s2n_negotiate_until_message(server_conn, &blocked, CLIENT_HELLO));
+            EXPECT_OK(s2n_negotiate_until_message(client_conn, &blocked, CLIENT_HELLO));
+
+            /* Replace the most preferred cipher suite, forcing the server to select a different
+             * cipher suite when processing the second ClientHello.
+             */
+            test_cipher_suites[0] = &s2n_tls13_chacha20_poly1305_sha256;
+
+            /* Test mode is disabled to skip the failing ClientHello comparison check due to a
+             * changed cipher suite list.
+             */
+            EXPECT_SUCCESS(s2n_in_unit_test_set(false));
             EXPECT_FAILURE_WITH_ERRNO(s2n_negotiate_test_server_and_client(server_conn, client_conn),
                     S2N_ERR_BAD_MESSAGE);
-        };
+            EXPECT_SUCCESS(s2n_in_unit_test_set(true));
+        }
 
         /* Test: The server rejects a second ClientHello with changed client random */
         {
@@ -791,7 +950,7 @@ int main(int argc, char **argv)
                     S2N_ERR_BAD_MESSAGE);
         };
 
-        /* Test: outside of testing, the server accepts an incorrectly updated ClientHello */
+        /* Test: Outside of testing, the server accepts a second ClientHello with a changed client random */
         {
             DEFER_CLEANUP(struct s2n_connection *server_conn = s2n_connection_new(S2N_SERVER),
                     s2n_connection_ptr_free);
