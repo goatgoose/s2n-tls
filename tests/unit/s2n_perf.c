@@ -89,8 +89,11 @@ int main(int argc, char **argv)
             &s2n_tls13_chacha20_poly1305_sha256,
             &s2n_ecdhe_ecdsa_with_aes_128_gcm_sha256,
             &s2n_ecdhe_rsa_with_aes_128_gcm_sha256,
+            &s2n_ecdhe_ecdsa_with_aes_256_gcm_sha384,
             &s2n_ecdhe_rsa_with_aes_256_gcm_sha384,
+            &s2n_ecdhe_ecdsa_with_chacha20_poly1305_sha256,
             &s2n_ecdhe_rsa_with_chacha20_poly1305_sha256,
+            &s2n_ecdhe_ecdsa_with_aes_128_cbc_sha,
             &s2n_ecdhe_rsa_with_aes_128_cbc_sha,
             &s2n_rsa_with_aes_128_gcm_sha256,
         };
