@@ -11,6 +11,7 @@ int main(int argc, char **argv)
     const clock_t runtime = runtime_seconds * CLOCKS_PER_SEC;
 
     printf("\noperation,ops,control,runtime/op=%d(s)\n", runtime_seconds);
+    fflush(stdout);
 
     printf("s2n_config_add_dhparams,");
     for (size_t run = 0; run <= 1; run++) {
@@ -33,6 +34,7 @@ int main(int argc, char **argv)
         printf("%llu,", ops_count);
     }
     printf("\n");
+    fflush(stdout);
 
     printf("s2n_config_add_ticket_crypto_key,");
     for (size_t run = 0; run <= 1; run++) {
@@ -60,6 +62,7 @@ int main(int argc, char **argv)
         printf("%llu,", ops_count);
     }
     printf("\n");
+    fflush(stdout);
 
     /* Handshakes */
     {
@@ -142,6 +145,7 @@ int main(int argc, char **argv)
                 printf("%llu,", ops_count);
             }
             printf("\n");
+            fflush(stdout);
         }
     }
 
