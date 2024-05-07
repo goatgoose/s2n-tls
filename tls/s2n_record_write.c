@@ -253,32 +253,22 @@ static inline int s2n_record_encrypt(
     return 0;
 }
 
-static S2N_RESULT s2n_record_write_mac(struct s2n_connection *conn, struct s2n_blob *record_header,
-        struct s2n_blob *plaintext, struct s2n_stuffer *out, uint32_t *bytes_written)
+S2N_RESULT s2n_record_write_mac(struct s2n_connection *conn, struct s2n_hmac_state *mac, struct s2n_blob *sequence_number,
+        struct s2n_blob *record_header, struct s2n_blob *plaintext, struct s2n_stuffer *out, uint32_t *bytes_written,
+        uint32_t *bytes_in_hash_block)
 {
     RESULT_ENSURE_REF(conn);
-    RESULT_ENSURE_REF(conn->server);
-    RESULT_ENSURE_REF(conn->client);
+    RESULT_ENSURE_REF(mac);
+    RESULT_ENSURE_REF(sequence_number);
     RESULT_ENSURE_REF(record_header);
     RESULT_ENSURE_REF(plaintext);
     RESULT_ENSURE_REF(out);
     RESULT_ENSURE_REF(bytes_written);
+    RESULT_ENSURE_REF(bytes_in_hash_block);
     *bytes_written = 0;
+    *bytes_in_hash_block = 0;
 
-    struct s2n_hmac_state *mac = &conn->server->server_record_mac;
-    const struct s2n_cipher_suite *cipher_suite = conn->server->cipher_suite;
-    uint8_t *sequence_number = conn->server->server_sequence_number;
-
-    if (conn->mode == S2N_CLIENT) {
-        mac = &conn->client->client_record_mac;
-        cipher_suite = conn->client->cipher_suite;
-        sequence_number = conn->client->client_sequence_number;
-    }
-
-    RESULT_ENSURE_REF(cipher_suite);
-    RESULT_ENSURE_REF(cipher_suite->record_alg);
-
-    if (cipher_suite->record_alg->hmac_alg == S2N_HMAC_NONE) {
+    if (mac->alg == S2N_HMAC_NONE) {
         /* If the S2N_HMAC_NONE algorithm is specified, a MAC should not be explicitly written.
          * This is the case for AEAD and Composite cipher types, where the MAC is written as part
          * of encryption. This is also the case for plaintext handshake records, where the null
@@ -287,13 +277,15 @@ static S2N_RESULT s2n_record_write_mac(struct s2n_connection *conn, struct s2n_b
         return S2N_RESULT_OK;
     }
 
+    RESULT_GUARD_POSIX(s2n_hmac_reset(mac));
+
     /**
      *= https://www.rfc-editor.org/rfc/rfc5246#section-6.2.3.1
      *# The MAC is generated as:
      *#
      *#    MAC(MAC_write_key, seq_num +
      */
-    RESULT_GUARD_POSIX(s2n_hmac_update(mac, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
+    RESULT_GUARD_POSIX(s2n_hmac_update(mac, sequence_number->data, sequence_number->size));
 
     struct s2n_stuffer header_stuffer = { 0 };
     RESULT_GUARD_POSIX(s2n_stuffer_init_written(&header_stuffer, record_header));
@@ -340,12 +332,17 @@ static S2N_RESULT s2n_record_write_mac(struct s2n_connection *conn, struct s2n_b
      *# where "+" denotes concatenation.
      */
     RESULT_GUARD_POSIX(s2n_hmac_update(mac, plaintext->data, plaintext->size));
+    *bytes_in_hash_block = mac->currently_in_hash_block;
 
     uint8_t mac_digest_size = 0;
     RESULT_GUARD_POSIX(s2n_hmac_digest_size(mac->alg, &mac_digest_size));
     uint8_t *digest = s2n_stuffer_raw_write(out, mac_digest_size);
     RESULT_ENSURE_REF(digest);
-    RESULT_GUARD_POSIX(s2n_hmac_digest(mac, digest, mac_digest_size));
+
+    /* This function MUST be performed in constant time, since the MAC is calculated as part of
+     * verifying received CBC records.
+     */
+    RESULT_GUARD_POSIX(s2n_hmac_digest_two_compression_rounds(mac, digest, mac_digest_size));
     *bytes_written = mac_digest_size;
 
     RESULT_GUARD_POSIX(s2n_hmac_reset(mac));
@@ -374,12 +371,14 @@ int s2n_record_writev(struct s2n_connection *conn, uint8_t content_type, const s
     }
 
     uint8_t *sequence_number = conn->server->server_sequence_number;
+    struct s2n_hmac_state *mac = &conn->server->server_record_mac;
     struct s2n_session_key *session_key = &conn->server->server_key;
     const struct s2n_cipher_suite *cipher_suite = conn->server->cipher_suite;
     uint8_t *implicit_iv = conn->server->server_implicit_iv;
 
     if (conn->mode == S2N_CLIENT) {
         sequence_number = conn->client->client_sequence_number;
+        mac = &conn->client->client_record_mac;
         session_key = &conn->client->client_key;
         cipher_suite = conn->client->cipher_suite;
         implicit_iv = conn->client->client_implicit_iv;
@@ -553,12 +552,16 @@ int s2n_record_writev(struct s2n_connection *conn, uint8_t content_type, const s
     void *orig_write_ptr = record_stuffer.blob.data + record_stuffer.write_cursor - data_bytes_to_take;
 
     /* Write the MAC */
+    struct s2n_blob sequence_number_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&sequence_number_blob, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
     struct s2n_blob header_blob = { 0 };
     POSIX_GUARD(s2n_blob_slice(&record_blob, &header_blob, 0, S2N_TLS_RECORD_HEADER_LENGTH));
     struct s2n_blob plaintext_blob = { 0 };
     POSIX_GUARD(s2n_blob_init(&plaintext_blob, orig_write_ptr, data_bytes_to_take));
     uint32_t mac_digest_size = 0;
-    POSIX_GUARD_RESULT(s2n_record_write_mac(conn, &header_blob, &plaintext_blob, &record_stuffer, &mac_digest_size));
+    uint32_t bytes_in_hash_block = 0;
+    POSIX_GUARD_RESULT(s2n_record_write_mac(conn, mac, &sequence_number_blob, &header_blob, &plaintext_blob,
+            &record_stuffer, &mac_digest_size, &bytes_in_hash_block));
 
     /* We are done with this sequence number, so we can increment it */
     struct s2n_blob seq = { 0 };

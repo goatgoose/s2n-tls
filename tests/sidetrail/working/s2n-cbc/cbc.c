@@ -82,5 +82,8 @@ int simple_cbc_wrapper(int currently_in_hash_block, int size, int *xor_pad, int 
     .allocated = 1,
   };
 
-  return s2n_verify_cbc(&conn, &hmac, &decrypted);
+  struct s2n_blob sequence_number = { 0 };
+  struct s2n_blob record_header = { 0 };
+
+  return s2n_verify_cbc(&conn, &hmac, &sequence_number, &record_header, &decrypted);
 }

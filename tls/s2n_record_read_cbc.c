@@ -42,6 +42,8 @@ int s2n_record_parse_cbc(
     /* Add the header to the HMAC */
     uint8_t *header = s2n_stuffer_raw_read(&conn->header_in, S2N_TLS_RECORD_HEADER_LENGTH);
     POSIX_ENSURE_REF(header);
+    struct s2n_blob header_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&header_blob, header, S2N_TLS_RECORD_HEADER_LENGTH));
 
     POSIX_ENSURE_LTE(cipher_suite->record_alg->cipher->io.cbc.record_iv_size, S2N_TLS_MAX_IV_LEN);
 
@@ -85,26 +87,16 @@ int s2n_record_parse_cbc(
     uint32_t out = 0;
     POSIX_GUARD(s2n_sub_overflow(payload_length, en.data[en.size - 1] + 1, &out));
     payload_length = out;
-    /* Update the MAC */
-    header[3] = (payload_length >> 8);
-    header[4] = payload_length & 0xff;
-    POSIX_GUARD(s2n_hmac_reset(mac));
-    POSIX_GUARD(s2n_hmac_update(mac, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
 
-    if (conn->actual_protocol_version == S2N_SSLv3) {
-        POSIX_GUARD(s2n_hmac_update(mac, header, 1));
-        POSIX_GUARD(s2n_hmac_update(mac, header + 3, 2));
-    } else {
-        POSIX_GUARD(s2n_hmac_update(mac, header, S2N_TLS_RECORD_HEADER_LENGTH));
-    }
-
-    struct s2n_blob seq = { .data = sequence_number, .size = S2N_TLS_SEQUENCE_NUM_LEN };
-    POSIX_GUARD(s2n_increment_sequence_number(&seq));
+    struct s2n_blob sequence_number_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&sequence_number_blob, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
 
     /* Padding. This finalizes the provided HMAC. */
-    if (s2n_verify_cbc(conn, mac, &en) < 0) {
+    if (s2n_verify_cbc(conn, mac, &sequence_number_blob, &header_blob, &en) < 0) {
         POSIX_BAIL(S2N_ERR_BAD_MESSAGE);
     }
+
+    POSIX_GUARD(s2n_increment_sequence_number(&sequence_number_blob));
 
     /* O.k., we've successfully read and decrypted the record, now we need to align the stuffer
      * for reading the plaintext data.

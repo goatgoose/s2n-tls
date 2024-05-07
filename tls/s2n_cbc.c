@@ -43,7 +43,8 @@
  * complexity of attack for even a 1 microsecond timing leak (which
  * is quite large) by a factor of around 83 trillion.
  */
-int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, struct s2n_blob *decrypted)
+int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, struct s2n_blob *sequence_number,
+        struct s2n_blob *record_header, struct s2n_blob *decrypted)
 {
     uint8_t mac_digest_size = 0;
     POSIX_GUARD(s2n_hmac_digest_size(hmac->alg, &mac_digest_size));
@@ -58,22 +59,26 @@ int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, str
     uint8_t padding_length = decrypted->data[decrypted->size - 1];
 
     int payload_length = MAX(payload_and_padding_size - padding_length - 1, 0);
-
-    /* Update the MAC */
-    POSIX_GUARD(s2n_hmac_update(hmac, decrypted->data, payload_length));
-    int currently_in_hash_block = hmac->currently_in_hash_block;
+    struct s2n_blob plaintext = { 0 };
+    POSIX_GUARD(s2n_blob_slice(decrypted, &plaintext, 0, payload_length));
 
     /* Check the MAC */
-    uint8_t check_digest[S2N_MAX_DIGEST_LEN];
-    POSIX_ENSURE_LTE(mac_digest_size, sizeof(check_digest));
-    POSIX_GUARD(s2n_hmac_digest_two_compression_rounds(hmac, check_digest, mac_digest_size));
+    uint8_t check_digest[S2N_MAX_DIGEST_LEN] = { 0 };
+    struct s2n_blob digest_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&digest_blob, check_digest, sizeof(check_digest)));
+    struct s2n_stuffer digest_stuffer = { 0 };
+    POSIX_GUARD(s2n_stuffer_init(&digest_stuffer, &digest_blob));
+
+    uint32_t bytes_written = 0;
+    uint32_t currently_in_hash_block = 0;
+    POSIX_GUARD_RESULT(s2n_record_write_mac(conn, hmac, sequence_number, record_header, &plaintext,
+            &digest_stuffer, &bytes_written, &currently_in_hash_block));
 
     int mismatches = s2n_constant_time_equals(decrypted->data + payload_length, check_digest, mac_digest_size) ^ 1;
 
     /* Compute a MAC on the rest of the data so that we perform the same number of hash operations.
      * Include the partial hash block from the first MAC to ensure we use the same number of blocks.
      */
-    POSIX_GUARD(s2n_hmac_reset(hmac));
     POSIX_GUARD(s2n_hmac_update(hmac, decrypted->data, currently_in_hash_block));
     POSIX_GUARD(s2n_hmac_update(hmac, decrypted->data + payload_length + mac_digest_size, decrypted->size - payload_length - mac_digest_size - 1));
 

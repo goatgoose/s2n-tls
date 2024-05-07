@@ -52,28 +52,26 @@ int s2n_record_parse_stream(
     /* Decrypt stuff! */
     POSIX_GUARD(cipher_suite->record_alg->cipher->io.stream.decrypt(session_key, &en, &en));
 
-    /* Update the MAC */
-    header[3] = (payload_length >> 8);
-    header[4] = payload_length & 0xff;
-    POSIX_GUARD(s2n_hmac_reset(mac));
-    POSIX_GUARD(s2n_hmac_update(mac, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
+    /* Check the MAC */
+    uint8_t check_digest[S2N_MAX_DIGEST_LEN] = { 0 };
+    struct s2n_blob digest_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&digest_blob, check_digest, sizeof(check_digest)));
+    struct s2n_stuffer digest_stuffer = { 0 };
+    POSIX_GUARD(s2n_stuffer_init(&digest_stuffer, &digest_blob));
 
-    if (conn->actual_protocol_version == S2N_SSLv3) {
-        POSIX_GUARD(s2n_hmac_update(mac, header, 1));
-        POSIX_GUARD(s2n_hmac_update(mac, header + 3, 2));
-    } else {
-        POSIX_GUARD(s2n_hmac_update(mac, header, S2N_TLS_RECORD_HEADER_LENGTH));
-    }
+    struct s2n_blob sequence_number_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&sequence_number_blob, sequence_number, S2N_TLS_SEQUENCE_NUM_LEN));
+    struct s2n_blob header_blob = { 0 };
+    POSIX_GUARD(s2n_blob_init(&header_blob, header, S2N_TLS_RECORD_HEADER_LENGTH));
+    struct s2n_blob plaintext_blob = { 0 };
+    POSIX_GUARD(s2n_blob_slice(&en, &plaintext_blob, 0, payload_length));
 
-    struct s2n_blob seq = { .data = sequence_number, .size = S2N_TLS_SEQUENCE_NUM_LEN };
-    POSIX_GUARD(s2n_increment_sequence_number(&seq));
+    uint32_t bytes_written = 0;
+    uint32_t currently_in_hash_block = 0;
+    POSIX_GUARD_RESULT(s2n_record_write_mac(conn, mac, &sequence_number_blob, &header_blob, &plaintext_blob,
+            &digest_stuffer, &bytes_written, &currently_in_hash_block));
 
-    /* MAC check for streaming ciphers - no padding */
-    POSIX_GUARD(s2n_hmac_update(mac, en.data, payload_length));
-
-    uint8_t check_digest[S2N_MAX_DIGEST_LEN];
-    POSIX_ENSURE_LTE(mac_digest_size, sizeof(check_digest));
-    POSIX_GUARD(s2n_hmac_digest(mac, check_digest, mac_digest_size));
+    POSIX_GUARD(s2n_increment_sequence_number(&sequence_number_blob));
 
     if (s2n_hmac_digest_verify(en.data + payload_length, check_digest, mac_digest_size) < 0) {
         POSIX_BAIL(S2N_ERR_BAD_MESSAGE);

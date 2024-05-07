@@ -22,7 +22,8 @@
 
 int nondet();
 
-int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, struct s2n_blob *decrypted)
+int s2n_verify_cbc(struct s2n_connection *conn, struct s2n_hmac_state *hmac, struct s2n_blob *sequence_number,
+        struct s2n_blob *record_header, struct s2n_blob *decrypted)
 {
   int leakage = nondet();
   /* We have a proof that the max leakage this step can introduce is MAX_LEAKAGE_DIFFERENCE */
