@@ -96,7 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let mut response = String::new();
         tls.read_to_string(&mut response).await?;
-        println!("\nserver response: {response}");
+        println!("server response: {response}");
 
         tls.shutdown().await?;
 
