@@ -21,6 +21,7 @@ use core::{
     task::{Poll, Waker},
     time::Duration,
 };
+use std::any::Any;
 use libc::c_void;
 use s2n_tls_sys::*;
 use std::ffi::CStr;
@@ -1049,6 +1050,20 @@ impl Connection {
     pub fn resumed(&self) -> bool {
         unsafe { s2n_connection_is_session_resumed(self.connection.as_ptr()) == 1 }
     }
+
+    pub fn set_application_context<T>(
+        &mut self,
+        app_context: T
+    ) where T: Send + Sync + 'static {
+        self.context_mut().app_context = Some(Box::new(app_context));
+    }
+
+    pub fn application_context<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        if let Some(app_context) = &self.context().app_context {
+            return app_context.downcast_ref::<T>();
+        }
+        None
+    }
 }
 
 struct Context {
@@ -1057,6 +1072,7 @@ struct Context {
     async_callback: Option<AsyncCallback>,
     verify_host_callback: Option<Box<dyn VerifyHostNameCallback>>,
     connection_initialized: bool,
+    app_context: Option<Box<dyn Any + Send + Sync>>,
 }
 
 impl Context {
@@ -1067,6 +1083,7 @@ impl Context {
             async_callback: None,
             verify_host_callback: None,
             connection_initialized: false,
+            app_context: None,
         }
     }
 }
