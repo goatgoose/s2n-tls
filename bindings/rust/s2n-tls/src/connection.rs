@@ -21,9 +21,9 @@ use core::{
     task::{Poll, Waker},
     time::Duration,
 };
-use std::any::Any;
 use libc::c_void;
 use s2n_tls_sys::*;
+use std::any::Any;
 use std::ffi::CStr;
 
 mod builder;
@@ -1051,26 +1051,25 @@ impl Connection {
         unsafe { s2n_connection_is_session_resumed(self.connection.as_ptr()) == 1 }
     }
 
-    pub fn set_application_context<T>(
-        &mut self,
-        app_context: T
-    ) where T: Send + Sync + 'static {
+    pub fn set_application_context<T>(&mut self, app_context: T)
+    where
+        T: Send + Sync + 'static,
+    {
         self.context_mut().app_context = Some(Box::new(app_context));
     }
 
     pub fn application_context<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        if let Some(app_context) = &self.context().app_context {
-            return app_context.downcast_ref::<T>();
+        match self.context().app_context.as_ref() {
+            None => None,
+            Some(app_context) => app_context.downcast_ref::<T>(),
         }
-        None
     }
 
     pub fn application_context_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
-        let context = self.context_mut().app_context.as_mut();
-        if let Some(app_context) = context {
-            return app_context.downcast_mut::<T>();
+        match self.context_mut().app_context.as_mut() {
+            None => None,
+            Some(app_context) => app_context.downcast_mut::<T>(),
         }
-        None
     }
 }
 

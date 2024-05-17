@@ -1,9 +1,13 @@
-use std::error::Error;
-use std::time::SystemTime;
 use s2n_tls::security::DEFAULT_TLS13;
 use s2n_tls_tokio::TlsAcceptor;
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpListener;
+use std::{
+    error::Error,
+    time::SystemTime,
+};
+use tokio::{
+    io::AsyncWriteExt,
+    net::TcpListener,
+};
 
 const KEY: [u8; 16] = [0; 16];
 const KEY_NAME: [u8; 3] = [1, 3, 4];
@@ -17,7 +21,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut config = s2n_tls::config::Builder::new();
     config.set_security_policy(&DEFAULT_TLS13).unwrap();
-    config.add_session_ticket_key(&KEY_NAME, &KEY, SystemTime::now()).unwrap();
+    config
+        .add_session_ticket_key(&KEY_NAME, &KEY, SystemTime::now())
+        .unwrap();
     config.load_pem(&cert, &key).unwrap();
     let config = config.build()?;
     let server = TlsAcceptor::new(config);
@@ -25,11 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind("0.0.0.0:9000").await?;
     loop {
         let server = server.clone();
-        let (stream, addr) = listener.accept().await?;
-
-        let ip = addr.ip();
-        let port = addr.port();
-        println!("ip: {ip}, port: {port}");
+        let (stream, _) = listener.accept().await?;
 
         tokio::spawn(async move {
             let handshake = server.accept(stream).await;
@@ -40,10 +42,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     return Ok(());
                 }
             };
-
-            let connection = tls.as_ref();
-            let version = connection.actual_protocol_version()?;
-            println!("protocol version: {:?}", version);
 
             let _ = tls.write("hello from server.".as_bytes()).await?;
             tls.shutdown().await?;

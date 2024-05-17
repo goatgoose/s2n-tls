@@ -1,17 +1,19 @@
-use std::collections::HashMap;
-use std::error::Error;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::net::IpAddr;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
-use s2n_tls::callbacks::{SessionTicket, SessionTicketCallback};
-use s2n_tls::config::Config;
-use s2n_tls::connection::{Builder, Connection, ModifiedBuilder};
-use s2n_tls::error::Pollable;
-use s2n_tls::security::DEFAULT_TLS13;
+use s2n_tls::{
+    callbacks::{SessionTicket, SessionTicketCallback},
+    connection::{Connection, ModifiedBuilder},
+    security::DEFAULT_TLS13,
+};
 use s2n_tls_tokio::TlsConnector;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use std::{
+    collections::HashMap,
+    error::Error,
+    net::IpAddr,
+    sync::{Arc, Mutex},
+};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 struct ApplicationContext {
     ip_addr: IpAddr,
@@ -28,7 +30,9 @@ pub struct SessionTicketHandler {
 
 impl SessionTicketCallback for SessionTicketHandler {
     fn on_session_ticket(&self, connection: &mut Connection, session_ticket: &SessionTicket) {
-        let mut app_context = connection.application_context_mut::<ApplicationContext>().unwrap();
+        let app_context = connection
+            .application_context_mut::<ApplicationContext>()
+            .unwrap();
 
         let size = session_ticket.len().unwrap();
         let mut data = vec![0; size];
@@ -53,7 +57,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut config = s2n_tls::config::Builder::new();
     config.set_security_policy(&DEFAULT_TLS13).unwrap();
     config.trust_pem(&cert).unwrap();
-    config.set_session_ticket_callback(session_ticket_handler.clone()).unwrap();
+    config
+        .set_session_ticket_callback(session_ticket_handler.clone())
+        .unwrap();
     config.enable_session_tickets(true).unwrap();
     let config = config.build()?;
 
@@ -99,7 +105,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             assert!(connection.resumed());
         }
 
-        let app_ctx = connection.application_context::<ApplicationContext>().unwrap();
+        let app_ctx = connection
+            .application_context::<ApplicationContext>()
+            .unwrap();
         assert_eq!(app_ctx.tickets_received, 1);
     }
 
