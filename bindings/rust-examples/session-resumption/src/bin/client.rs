@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     config.enable_session_tickets(true).unwrap();
     let config = config.build()?;
 
-    for handshake_idx in 0..3 {
+    for connection_idx in 0..3 {
         let stream = TcpStream::connect("127.0.0.1:9000").await?;
         let ip = stream.peer_addr().unwrap().ip();
 
@@ -101,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tls.shutdown().await?;
 
         let connection = tls.as_ref();
-        if handshake_idx == 0 {
+        if connection_idx == 0 {
             assert!(!connection.resumed());
         } else {
             assert!(connection.resumed());

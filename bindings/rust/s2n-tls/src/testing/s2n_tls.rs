@@ -232,6 +232,7 @@ impl<'a, T: 'a + Context> Callback<'a, T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::callbacks::ConnectionFutureResult;
     use crate::{
         callbacks::{ClientHelloCallback, ConnectionFuture},
         enums::ClientAuthType,
@@ -242,7 +243,6 @@ mod tests {
     use core::sync::atomic::Ordering;
     use futures_test::task::{new_count_waker, noop_waker};
     use std::{fs, path::Path, pin::Pin, sync::atomic::AtomicUsize};
-    use crate::callbacks::ConnectionFutureResult;
 
     #[test]
     fn handshake_default() {
@@ -980,11 +980,11 @@ mod tests {
         }
 
         let mut connection = connection::Connection::new_server();
-        connection.set_application_context(TestApplicationContext {
-            test_value: 1142,
-        });
+        connection.set_application_context(TestApplicationContext { test_value: 1142 });
 
-        let context = connection.application_context::<TestApplicationContext>().unwrap();
+        let context = connection
+            .application_context::<TestApplicationContext>()
+            .unwrap();
         assert_eq!(context.test_value, 1142);
     }
 
@@ -996,14 +996,16 @@ mod tests {
         }
 
         let mut connection = connection::Connection::new_server();
-        connection.set_application_context(TestApplicationContext {
-            test_value: 0,
-        });
+        connection.set_application_context(TestApplicationContext { test_value: 0 });
 
-        let context = connection.application_context_mut::<TestApplicationContext>().unwrap();
+        let context = connection
+            .application_context_mut::<TestApplicationContext>()
+            .unwrap();
         context.test_value += 1;
 
-        let context = connection.application_context::<TestApplicationContext>().unwrap();
+        let context = connection
+            .application_context::<TestApplicationContext>()
+            .unwrap();
         assert_eq!(context.test_value, 1);
     }
 
@@ -1015,22 +1017,22 @@ mod tests {
         }
 
         let mut connection = connection::Connection::new_server();
-        connection.set_application_context(TestApplicationContext {
-            test_value: 1142,
-        });
+        connection.set_application_context(TestApplicationContext { test_value: 1142 });
 
         {
-            let context = connection.application_context::<TestApplicationContext>().unwrap();
+            let context = connection
+                .application_context::<TestApplicationContext>()
+                .unwrap();
             assert_eq!(context.test_value, 1142);
         }
 
         // Override the context with a new value.
-        connection.set_application_context(TestApplicationContext {
-            test_value: 10,
-        });
+        connection.set_application_context(TestApplicationContext { test_value: 10 });
 
         {
-            let context = connection.application_context::<TestApplicationContext>().unwrap();
+            let context = connection
+                .application_context::<TestApplicationContext>()
+                .unwrap();
             assert_eq!(context.test_value, 10);
         }
 
@@ -1042,7 +1044,9 @@ mod tests {
             another_test_value: -20,
         });
 
-        let context = connection.application_context::<AnotherApplicationContext>().unwrap();
+        let context = connection
+            .application_context::<AnotherApplicationContext>()
+            .unwrap();
         assert_eq!(context.another_test_value, -20);
     }
 
@@ -1056,10 +1060,14 @@ mod tests {
         connection.set_application_context(TestApplicationContext {});
 
         // A context type that wasn't set shouldn't be returned.
-        assert!(connection.application_context::<AnotherApplicationContext>().is_none());
+        assert!(connection
+            .application_context::<AnotherApplicationContext>()
+            .is_none());
 
         // Retrieving the correct type succeeds.
-        assert!(connection.application_context::<TestApplicationContext>().is_some());
+        assert!(connection
+            .application_context::<TestApplicationContext>()
+            .is_some());
     }
 
     /// Test that a context can be used from within a callback.
@@ -1074,10 +1082,10 @@ mod tests {
         impl ClientHelloCallback for TestClientHelloHandler {
             fn on_client_hello(
                 &self,
-                connection: &mut connection::Connection
+                connection: &mut connection::Connection,
             ) -> ConnectionFutureResult {
-                let app_context = connection.
-                    application_context_mut::<TestApplicationContext>()
+                let app_context = connection
+                    .application_context_mut::<TestApplicationContext>()
                     .unwrap();
                 app_context.invoked_count += 1;
                 Ok(None)
@@ -1087,9 +1095,15 @@ mod tests {
         let config = {
             let keypair = CertKeyPair::default();
             let mut builder = Builder::new();
-            builder.set_security_policy(&security::DEFAULT_TLS13).unwrap();
-            builder.set_verify_host_callback(InsecureAcceptAllCertificatesHandler {}).unwrap();
-            builder.set_client_hello_callback(TestClientHelloHandler {}).unwrap();
+            builder
+                .set_security_policy(&security::DEFAULT_TLS13)
+                .unwrap();
+            builder
+                .set_verify_host_callback(InsecureAcceptAllCertificatesHandler {})
+                .unwrap();
+            builder
+                .set_client_hello_callback(TestClientHelloHandler {})
+                .unwrap();
             builder.load_pem(keypair.cert, keypair.key).unwrap();
             builder.trust_pem(keypair.cert).unwrap();
             builder.build().unwrap()
@@ -1099,11 +1113,10 @@ mod tests {
         pair.server
             .0
             .connection_mut()
-            .set_waker(Some(&noop_waker())).unwrap();
+            .set_waker(Some(&noop_waker()))
+            .unwrap();
 
-        let context = TestApplicationContext {
-            invoked_count: 0,
-        };
+        let context = TestApplicationContext { invoked_count: 0 };
         pair.server
             .0
             .connection_mut()

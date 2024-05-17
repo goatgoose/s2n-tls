@@ -1,13 +1,7 @@
 use s2n_tls::security::DEFAULT_TLS13;
 use s2n_tls_tokio::TlsAcceptor;
-use std::{
-    error::Error,
-    time::SystemTime,
-};
-use tokio::{
-    io::AsyncWriteExt,
-    net::TcpListener,
-};
+use std::{error::Error, time::SystemTime};
+use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 const KEY: [u8; 16] = [0; 16];
 const KEY_NAME: [u8; 3] = [1, 3, 4];

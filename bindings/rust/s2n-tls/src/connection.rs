@@ -1051,10 +1051,10 @@ impl Connection {
         unsafe { s2n_connection_is_session_resumed(self.connection.as_ptr()) == 1 }
     }
 
-    /// Associates an arbitrary struct with the Connection to be later retrieved via the
-    /// [`Self::application_context()`] and [`Self::application_context_mut()`] APIs.
+    /// Associates an arbitrary application context with the Connection to be later retrieved via
+    /// the [`Self::application_context()`] and [`Self::application_context_mut()`] APIs.
     ///
-    /// This API will override an existing application context on the Connection.
+    /// This API will override an existing application context set on the Connection.
     pub fn set_application_context<T>(&mut self, app_context: T)
     where
         T: Send + Sync + 'static,
