@@ -1064,6 +1064,14 @@ impl Connection {
         }
         None
     }
+
+    pub fn application_context_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
+        let context = self.context_mut().app_context.as_mut();
+        if let Some(app_context) = context {
+            return app_context.downcast_mut::<T>();
+        }
+        None
+    }
 }
 
 struct Context {
