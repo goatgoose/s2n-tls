@@ -1096,9 +1096,6 @@ mod tests {
             let keypair = CertKeyPair::default();
             let mut builder = Builder::new();
             builder
-                .set_security_policy(&security::DEFAULT_TLS13)
-                .unwrap();
-            builder
                 .set_verify_host_callback(InsecureAcceptAllCertificatesHandler {})
                 .unwrap();
             builder
