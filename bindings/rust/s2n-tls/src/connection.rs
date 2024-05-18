@@ -23,8 +23,7 @@ use core::{
 };
 use libc::c_void;
 use s2n_tls_sys::*;
-use std::any::Any;
-use std::ffi::CStr;
+use std::{any::Any, ffi::CStr};
 
 mod builder;
 pub use builder::*;

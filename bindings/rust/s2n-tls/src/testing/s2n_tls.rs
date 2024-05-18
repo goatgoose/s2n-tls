@@ -232,9 +232,8 @@ impl<'a, T: 'a + Context> Callback<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::callbacks::ConnectionFutureResult;
     use crate::{
-        callbacks::{ClientHelloCallback, ConnectionFuture},
+        callbacks::{ClientHelloCallback, ConnectionFuture, ConnectionFutureResult},
         enums::ClientAuthType,
         error::ErrorType,
         testing::{client_hello::*, s2n_tls::*, *},
