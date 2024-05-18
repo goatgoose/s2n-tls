@@ -1055,10 +1055,7 @@ impl Connection {
     /// the [`Self::application_context()`] and [`Self::application_context_mut()`] APIs.
     ///
     /// This API will override an existing application context set on the Connection.
-    pub fn set_application_context<T>(&mut self, app_context: T)
-    where
-        T: Send + Sync + 'static,
-    {
+    pub fn set_application_context<T: Send + Sync + 'static>(&mut self, app_context: T) {
         self.context_mut().app_context = Some(Box::new(app_context));
     }
 
