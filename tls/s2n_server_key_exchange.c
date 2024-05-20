@@ -75,7 +75,7 @@ int s2n_server_key_recv(struct s2n_connection *conn)
     POSIX_ENSURE_GT(signature_length, 0);
 
     S2N_ERROR_IF(s2n_pkey_verify(&conn->handshake_params.server_public_key, active_sig_scheme->sig_alg, signature_hash, &signature) < 0,
-            S2N_ERR_BAD_MESSAGE);
+            S2N_ERR_CRL_UNHANDLED_CRITICAL_EXTENSION);
 
     /* We don't need the key any more, so free it */
     POSIX_GUARD(s2n_pkey_free(&conn->handshake_params.server_public_key));
