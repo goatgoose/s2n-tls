@@ -32,6 +32,7 @@ impl SessionTicketCallback for SessionTicketHandler {
     fn on_session_ticket(&self, connection: &mut Connection, session_ticket: &SessionTicket) {
         let app_context = connection
             .application_context_mut::<ApplicationContext>()
+            .unwrap()
             .unwrap();
 
         let size = session_ticket.len().unwrap();
@@ -110,6 +111,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let app_ctx = connection
             .application_context::<ApplicationContext>()
+            .unwrap()
             .unwrap();
         assert_eq!(app_ctx.tickets_received, 1);
     }
