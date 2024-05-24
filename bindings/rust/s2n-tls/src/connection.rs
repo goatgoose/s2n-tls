@@ -1235,10 +1235,7 @@ mod tests {
         connection.set_application_context(test_value);
 
         // After a context is set, the application data is returned.
-        assert_eq!(
-            *connection.application_context::<u32>().unwrap(),
-            1142
-        );
+        assert_eq!(*connection.application_context::<u32>().unwrap(), 1142);
     }
 
     /// Test that an application context can be modified.
@@ -1249,15 +1246,10 @@ mod tests {
         let mut connection = Connection::new_server();
         connection.set_application_context(test_value);
 
-        let context_value = connection
-            .application_context_mut::<u64>()
-            .unwrap();
+        let context_value = connection.application_context_mut::<u64>().unwrap();
         *context_value += 1;
 
-        assert_eq!(
-            *connection.application_context::<u64>().unwrap(),
-            1
-        );
+        assert_eq!(*connection.application_context::<u64>().unwrap(), 1);
     }
 
     /// Test that an application context can be overridden.
@@ -1268,28 +1260,19 @@ mod tests {
         let test_value: u16 = 1142;
         connection.set_application_context(test_value);
 
-        assert_eq!(
-            *connection.application_context::<u16>().unwrap(),
-            1142
-        );
+        assert_eq!(*connection.application_context::<u16>().unwrap(), 1142);
 
         // Override the context with a new value.
         let test_value: u16 = 10;
         connection.set_application_context(test_value);
 
-        assert_eq!(
-            *connection.application_context::<u16>().unwrap(),
-            10
-        );
+        assert_eq!(*connection.application_context::<u16>().unwrap(), 10);
 
         // Override the context with a new type.
         let test_value: i16 = -20;
         connection.set_application_context(test_value);
 
-        assert_eq!(
-            *connection.application_context::<i16>().unwrap(),
-            -20
-        );
+        assert_eq!(*connection.application_context::<i16>().unwrap(), -20);
     }
 
     /// Test that a context of another type can't be retrieved.
