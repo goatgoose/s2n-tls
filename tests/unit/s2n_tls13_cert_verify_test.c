@@ -37,6 +37,20 @@ struct s2n_tls13_cert_verify_test {
 
 const struct s2n_tls13_cert_verify_test test_cases[] = {
     {
+            .cert_file = S2N_RSA_PSS_2048_SHA256_LEAF_CERT,
+            .key_file = S2N_RSA_PSS_2048_SHA256_LEAF_KEY,
+            .sig_scheme = &s2n_rsa_pss_pss_sha256,
+            .with_wrong_hash = &s2n_rsa_pss_pss_sha384,
+            .with_wrong_sig_alg = &s2n_rsa_pss_rsae_sha256,
+    },
+    {
+            .cert_file = S2N_RSA_2048_PKCS1_CERT_CHAIN,
+            .key_file = S2N_RSA_2048_PKCS1_KEY,
+            .sig_scheme = &s2n_rsa_pss_rsae_sha256,
+            .with_wrong_hash = &s2n_rsa_pss_rsae_sha384,
+            .with_wrong_sig_alg = &s2n_rsa_pss_pss_sha256,
+    },
+    {
             .cert_file = S2N_ECDSA_P256_PKCS1_CERT_CHAIN,
             .key_file = S2N_ECDSA_P256_PKCS1_KEY,
             .sig_scheme = &s2n_ecdsa_sha256,
