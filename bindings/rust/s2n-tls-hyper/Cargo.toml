@@ -15,4 +15,6 @@ default = []
 s2n-tls = { version = "=0.2.7", path = "../s2n-tls" }
 s2n-tls-tokio = { version = "=0.2.7", path = "../s2n-tls-tokio" }
 hyper = { version = "1" }
-hyper-util = { version = "0.1" }
+hyper-util = { version = "0.1", features = ["client-legacy", "tokio"] }
+
+tokio-rustls = { version = "0.26" }
