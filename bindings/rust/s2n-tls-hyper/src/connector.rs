@@ -5,12 +5,13 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use hyper::rt::{Read, Write};
 use hyper_util::client::legacy::connect::{Connected, Connection, HttpConnector};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioIo};
 use tower_service::Service;
 use s2n_tls::connection::Builder;
 use s2n_tls::config::Config;
 use s2n_tls_tokio::{TlsConnector, TlsStream};
 use http::uri::Uri;
+use crate::stream::{HttpsStream, MaybeHttpsStream};
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -30,8 +31,11 @@ where
     <B as Builder>::Output: Unpin,
 {
     pub fn new(builder: B) -> HttpsConnector<HttpConnector, B> {
+        let mut http = HttpConnector::new();
+        http.enforce_http(false);
+
         HttpsConnector {
-            http: HttpConnector::new(),
+            http,
             builder,
         }
     }
@@ -43,13 +47,13 @@ where
     T::Response: Read + Write + Connection + Unpin + Send + 'static,
     T::Future: Send + 'static,
     T::Error: Into<BoxError>,
-    B: Builder + 'static,
-    <B as Builder>::Output: Unpin,
+    B: Builder + Send + Sync + 'static,
+    <B as Builder>::Output: Unpin + Send,
 {
-    type Response = TokioIo<TlsStream<TokioIo<T::Response>, B::Output>>;
+    type Response = MaybeHttpsStream<T::Response, B>;
     type Error = BoxError;
     type Future = Pin<Box<
-        dyn Future<Output = Result<TokioIo<TlsStream<TokioIo<T::Response>, B::Output>>, BoxError>>
+        dyn Future<Output = Result<MaybeHttpsStream<T::Response, B>, BoxError>> + Send
     >>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -61,19 +65,25 @@ where
     }
 
     fn call(&mut self, req: Uri) -> Self::Future {
-        // Only permit HTTP over TLS.
         if req.scheme() != Some(&http::uri::Scheme::HTTPS) {
             return Box::pin(async move { Err(UnsupportedScheme.into()) })
         }
 
         let builder = self.builder.clone();
-        let connector: TlsConnector<B> = TlsConnector::new(builder);
 
         let host = req.host().unwrap_or("").to_owned();
         let call = self.http.call(req);
         Box::pin(async move {
             let tcp = call.await.map_err(Into::into)?;
-            Ok(TokioIo::new(connector.connect(&host, TokioIo::new(tcp)).await.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?))
+            let tcp = TokioIo::new(tcp);
+
+            let connector = TlsConnector::new(builder);
+            let tls = connector
+                .connect(&host, tcp)
+                .await
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+            Ok(MaybeHttpsStream::Https(TokioIo::new(tls)))
         })
     }
 }
@@ -88,3 +98,38 @@ impl fmt::Display for UnsupportedScheme {
 }
 
 impl std::error::Error for UnsupportedScheme {}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+    use super::*;
+    use hyper_util::client::legacy::Client;
+    use hyper_util::rt::TokioExecutor;
+    use http_body_util::{BodyExt, Empty};
+    use bytes::Bytes;
+
+    #[tokio::test]
+    async fn test_get_request() -> Result<(), BoxError> {
+        fn is_send<T: Send>() {}
+        is_send::<u8>();
+        is_send::<&s2n_tls_tokio::TlsConnector<s2n_tls::config::Config>>();
+
+        let connector = HttpsConnector::<HttpConnector>::new(Config::default());
+        let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
+
+        let uri = Uri::from_str("https://www.amazon.com")?;
+        let response = client.get(uri).await?;
+
+        println!("status:\n{}", response.status());
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes();
+        println!("body:\n{}", String::from_utf8_lossy(&body));
+
+        Ok(())
+    }
+}

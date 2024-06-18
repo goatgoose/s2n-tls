@@ -6,13 +6,46 @@ use hyper_util::rt::TokioIo;
 use hyper::rt::{Read, ReadBufCursor, Write};
 use s2n_tls_tokio::TlsStream;
 use tokio_rustls::TlsStream as RustlsStream;
+use s2n_tls::connection::Builder;
 
-pub enum MaybeHttpsStream<T: Read + Write + Connection + Unpin> {
-    Http(T),
-    Https(TokioIo<TlsStream<TokioIo<T>>>)
+pub enum HttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
+    Https(TokioIo < TlsStream < TokioIo < T >, B::Output > > ),
 }
 
-impl<T: Read + Write + Connection + Unpin> Connection for MaybeHttpsStream<T> {
+impl<T, B> Connection for HttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
+    fn connected(&self) -> Connected {
+        match self {
+            Self::Https(s) => s.inner().get_ref().connected()
+        }
+    }
+}
+
+pub enum MaybeHttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
+    Http(T),
+    Https(TokioIo<TlsStream<TokioIo<T>, B::Output>>)
+}
+
+impl<T, B> Connection for MaybeHttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
     fn connected(&self) -> Connected {
         match self {
             MaybeHttpsStream::Http(stream) => stream.connected(),
@@ -21,7 +54,12 @@ impl<T: Read + Write + Connection + Unpin> Connection for MaybeHttpsStream<T> {
     }
 }
 
-impl<T: Read + Write + Connection + Unpin> Read for MaybeHttpsStream<T> {
+impl<T, B> Read for MaybeHttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -34,7 +72,12 @@ impl<T: Read + Write + Connection + Unpin> Read for MaybeHttpsStream<T> {
     }
 }
 
-impl<T: Read + Write + Connection + Unpin> Write for MaybeHttpsStream<T>{
+impl<T, B> Write for MaybeHttpsStream<T, B>
+where
+    T: Read + Write + Connection + Unpin,
+    B: Builder,
+    <B as Builder>::Output: Unpin,
+{
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,

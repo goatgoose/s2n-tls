@@ -20,3 +20,9 @@ tower-service = { version = "0.3" }
 http = { version= "1" }
 
 tokio-rustls = { version = "0.26" }
+
+[dev-dependencies]
+tokio = { version = "1", features = [ "io-std", "io-util", "macros", "net", "rt-multi-thread", "test-util", "time"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "tokio", "http1"] }
+http-body-util = "0.1"
+bytes = "1"
