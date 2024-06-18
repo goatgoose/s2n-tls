@@ -43,13 +43,13 @@ where
     T::Response: Read + Write + Connection + Unpin + Send + 'static,
     T::Future: Send + 'static,
     T::Error: Into<BoxError>,
-    B: Builder<Output = s2n_tls::connection::Connection> + 'static,
+    B: Builder + 'static,
     <B as Builder>::Output: Unpin,
 {
-    type Response = TokioIo<TlsStream<TokioIo<T::Response>>>;
+    type Response = TokioIo<TlsStream<TokioIo<T::Response>, B::Output>>;
     type Error = BoxError;
     type Future = Pin<Box<
-        dyn Future<Output = Result<TokioIo<TlsStream<TokioIo<T::Response>>>, BoxError>>
+        dyn Future<Output = Result<TokioIo<TlsStream<TokioIo<T::Response>, B::Output>>, BoxError>>
     >>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
