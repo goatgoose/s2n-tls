@@ -1,2 +1,2 @@
-mod stream;
-mod connector;
+pub mod connector;
+pub mod stream;

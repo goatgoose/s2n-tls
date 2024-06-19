@@ -1,17 +1,17 @@
-use std::{fmt, io};
+use crate::stream::MaybeHttpsStream;
+use http::uri::Uri;
+use hyper::rt::{Read, Write};
+use hyper_util::client::legacy::connect::{Connection, HttpConnector};
+use hyper_util::rt::TokioIo;
+use s2n_tls::config::Config;
+use s2n_tls::connection;
+use s2n_tls_tokio::TlsConnector;
 use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use hyper::rt::{Read, Write};
-use hyper_util::client::legacy::connect::{Connected, Connection, HttpConnector};
-use hyper_util::rt::{TokioIo};
+use std::{fmt, io};
 use tower_service::Service;
-use s2n_tls::connection;
-use s2n_tls::config::Config;
-use s2n_tls_tokio::{TlsConnector, TlsStream};
-use http::uri::Uri;
-use crate::stream::{MaybeHttpsStream};
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -34,10 +34,7 @@ where
         let mut http = HttpConnector::new();
         http.enforce_http(false);
 
-        Builder::new(Self {
-            http,
-            conn_builder,
-        })
+        Builder::new(Self { http, conn_builder })
     }
 }
 
@@ -47,10 +44,7 @@ where
     <B as connection::Builder>::Output: Unpin,
 {
     pub fn builder_with_http(http: T, conn_builder: B) -> Builder<T, B> {
-        Builder::new(Self {
-            http,
-            conn_builder,
-        })
+        Builder::new(Self { http, conn_builder })
     }
 }
 
@@ -65,9 +59,8 @@ where
 {
     type Response = MaybeHttpsStream<T::Response, B>;
     type Error = BoxError;
-    type Future = Pin<Box<
-        dyn Future<Output = Result<MaybeHttpsStream<T::Response, B>, BoxError>> + Send
-    >>;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<MaybeHttpsStream<T::Response, B>, BoxError>> + Send>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match self.http.poll_ready(cx) {
@@ -79,7 +72,7 @@ where
 
     fn call(&mut self, req: Uri) -> Self::Future {
         if req.scheme() != Some(&http::uri::Scheme::HTTPS) {
-            return Box::pin(async move { Err(UnsupportedScheme.into()) })
+            return Box::pin(async move { Err(UnsupportedScheme.into()) });
         }
 
         let builder = self.conn_builder.clone();
@@ -115,12 +108,10 @@ where
     <B as connection::Builder>::Output: Unpin,
 {
     pub fn new(connector: HttpsConnector<T, B>) -> Self {
-        Self {
-            connector
-        }
+        Self { connector }
     }
 
-    pub fn build(mut self) -> HttpsConnector<T, B> {
+    pub fn build(self) -> HttpsConnector<T, B> {
         self.connector
     }
 }
@@ -138,28 +129,25 @@ impl std::error::Error for UnsupportedScheme {}
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use super::*;
-    use hyper_util::client::legacy::Client;
-    use hyper_util::rt::TokioExecutor;
-    use http_body_util::{BodyExt, Empty};
     use bytes::Bytes;
     use http::status;
+    use http_body_util::{BodyExt, Empty};
+    use hyper_util::client::legacy::Client;
+    use hyper_util::rt::TokioExecutor;
+    use std::str::FromStr;
 
     #[tokio::test]
     async fn test_get_request() -> Result<(), BoxError> {
         let connector = HttpsConnector::builder(Config::default()).build();
-        let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
+        let client: Client<_, Empty<Bytes>> =
+            Client::builder(TokioExecutor::new()).build(connector);
 
         let uri = Uri::from_str("https://www.amazon.com")?;
         let response = client.get(uri).await?;
         assert_eq!(response.status(), status::StatusCode::OK);
 
-        let body = response
-            .into_body()
-            .collect()
-            .await?
-            .to_bytes();
+        let body = response.into_body().collect().await?.to_bytes();
         assert!(body.len() > 0);
 
         Ok(())
