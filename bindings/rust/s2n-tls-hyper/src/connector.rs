@@ -11,7 +11,7 @@ use s2n_tls::connection::Builder;
 use s2n_tls::config::Config;
 use s2n_tls_tokio::{TlsConnector, TlsStream};
 use http::uri::Uri;
-use crate::stream::{HttpsStream, MaybeHttpsStream};
+use crate::stream::{MaybeHttpsStream};
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -107,20 +107,16 @@ mod tests {
     use hyper_util::rt::TokioExecutor;
     use http_body_util::{BodyExt, Empty};
     use bytes::Bytes;
+    use http::status;
 
     #[tokio::test]
     async fn test_get_request() -> Result<(), BoxError> {
-        fn is_send<T: Send>() {}
-        is_send::<u8>();
-        is_send::<&s2n_tls_tokio::TlsConnector<s2n_tls::config::Config>>();
-
         let connector = HttpsConnector::<HttpConnector>::new(Config::default());
         let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 
         let uri = Uri::from_str("https://www.amazon.com")?;
         let response = client.get(uri).await?;
-
-        println!("status:\n{}", response.status());
+        assert_eq!(response.status(), status::StatusCode::OK);
 
         let body = response
             .into_body()
@@ -128,7 +124,7 @@ mod tests {
             .await
             .unwrap()
             .to_bytes();
-        println!("body:\n{}", String::from_utf8_lossy(&body));
+        assert!(body.len() > 0);
 
         Ok(())
     }

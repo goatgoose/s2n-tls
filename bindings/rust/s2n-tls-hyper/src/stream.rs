@@ -8,28 +8,6 @@ use s2n_tls_tokio::TlsStream;
 use tokio_rustls::TlsStream as RustlsStream;
 use s2n_tls::connection::Builder;
 
-pub enum HttpsStream<T, B>
-where
-    T: Read + Write + Connection + Unpin,
-    B: Builder,
-    <B as Builder>::Output: Unpin,
-{
-    Https(TokioIo < TlsStream < TokioIo < T >, B::Output > > ),
-}
-
-impl<T, B> Connection for HttpsStream<T, B>
-where
-    T: Read + Write + Connection + Unpin,
-    B: Builder,
-    <B as Builder>::Output: Unpin,
-{
-    fn connected(&self) -> Connected {
-        match self {
-            Self::Https(s) => s.inner().get_ref().connected()
-        }
-    }
-}
-
 pub enum MaybeHttpsStream<T, B>
 where
     T: Read + Write + Connection + Unpin,
