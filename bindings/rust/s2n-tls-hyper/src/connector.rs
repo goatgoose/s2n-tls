@@ -25,12 +25,28 @@ where
     conn_builder: B,
 }
 
+impl<B> HttpsConnector<HttpConnector, B>
+where
+    B: connection::Builder,
+    <B as connection::Builder>::Output: Unpin,
+{
+    pub fn builder(conn_builder: B) -> Builder<HttpConnector, B> {
+        let mut http = HttpConnector::new();
+        http.enforce_http(false);
+
+        Builder::new(Self {
+            http,
+            conn_builder,
+        })
+    }
+}
+
 impl<T, B> HttpsConnector<T, B>
 where
     B: connection::Builder,
     <B as connection::Builder>::Output: Unpin,
 {
-    pub fn builder(http: T, conn_builder: B) -> Builder<T, B> {
+    pub fn builder_with_http(http: T, conn_builder: B) -> Builder<T, B> {
         Builder::new(Self {
             http,
             conn_builder,
@@ -132,9 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_request() -> Result<(), BoxError> {
-        let mut http = HttpConnector::new();
-        http.enforce_http(false);
-        let connector = HttpsConnector::builder(http, Config::default()).build();
+        let connector = HttpsConnector::builder(Config::default()).build();
         let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 
         let uri = Uri::from_str("https://www.amazon.com")?;
