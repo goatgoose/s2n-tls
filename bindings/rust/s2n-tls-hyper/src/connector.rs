@@ -7,7 +7,7 @@ use hyper::rt::{Read, Write};
 use hyper_util::client::legacy::connect::{Connected, Connection, HttpConnector};
 use hyper_util::rt::{TokioIo};
 use tower_service::Service;
-use s2n_tls::connection::Builder;
+use s2n_tls::connection;
 use s2n_tls::config::Config;
 use s2n_tls_tokio::{TlsConnector, TlsStream};
 use http::uri::Uri;
@@ -18,26 +18,23 @@ type BoxError = Box<dyn std::error::Error + Send + Sync>;
 #[derive(Clone)]
 pub struct HttpsConnector<T, B = Config>
 where
-    B: Builder,
-    <B as Builder>::Output: Unpin,
+    B: connection::Builder,
+    <B as connection::Builder>::Output: Unpin,
 {
     http: T,
-    builder: B,
+    conn_builder: B,
 }
 
 impl<T, B> HttpsConnector<T, B>
 where
-    B: Builder,
-    <B as Builder>::Output: Unpin,
+    B: connection::Builder,
+    <B as connection::Builder>::Output: Unpin,
 {
-    pub fn new(builder: B) -> HttpsConnector<HttpConnector, B> {
-        let mut http = HttpConnector::new();
-        http.enforce_http(false);
-
-        HttpsConnector {
+    pub fn builder(http: T, conn_builder: B) -> Builder<T, B> {
+        Builder::new(Self {
             http,
-            builder,
-        }
+            conn_builder,
+        })
     }
 }
 
@@ -47,8 +44,8 @@ where
     T::Response: Read + Write + Connection + Unpin + Send + 'static,
     T::Future: Send + 'static,
     T::Error: Into<BoxError>,
-    B: Builder + Send + Sync + 'static,
-    <B as Builder>::Output: Unpin + Send,
+    B: connection::Builder + Send + Sync + 'static,
+    <B as connection::Builder>::Output: Unpin + Send,
 {
     type Response = MaybeHttpsStream<T::Response, B>;
     type Error = BoxError;
@@ -69,7 +66,7 @@ where
             return Box::pin(async move { Err(UnsupportedScheme.into()) })
         }
 
-        let builder = self.builder.clone();
+        let builder = self.conn_builder.clone();
 
         let host = req.host().unwrap_or("").to_owned();
         let call = self.http.call(req);
@@ -85,6 +82,30 @@ where
 
             Ok(MaybeHttpsStream::Https(TokioIo::new(tls)))
         })
+    }
+}
+
+pub struct Builder<T, B>
+where
+    B: connection::Builder,
+    <B as connection::Builder>::Output: Unpin,
+{
+    connector: HttpsConnector<T, B>,
+}
+
+impl<T, B> Builder<T, B>
+where
+    B: connection::Builder,
+    <B as connection::Builder>::Output: Unpin,
+{
+    pub fn new(connector: HttpsConnector<T, B>) -> Self {
+        Self {
+            connector
+        }
+    }
+
+    pub fn build(mut self) -> HttpsConnector<T, B> {
+        self.connector
     }
 }
 
@@ -111,7 +132,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_request() -> Result<(), BoxError> {
-        let connector = HttpsConnector::<HttpConnector>::new(Config::default());
+        let mut http = HttpConnector::new();
+        http.enforce_http(false);
+        let connector = HttpsConnector::builder(http, Config::default()).build();
         let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 
         let uri = Uri::from_str("https://www.amazon.com")?;
@@ -121,8 +144,7 @@ mod tests {
         let body = response
             .into_body()
             .collect()
-            .await
-            .unwrap()
+            .await?
             .to_bytes();
         assert!(body.len() > 0);
 
