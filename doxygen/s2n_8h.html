@@ -23,7 +23,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="s2n-logo-github.svg"/></td>
   <td id="projectalign">
-   <div id="projectname">AWS s2n-tls<span id="projectnumber">&#160;v1.3.6-03f9301e</span>
+   <div id="projectname">AWS s2n-tls<span id="projectnumber">&#160;v1.3.6-7a7fae2d</span>
    </div>
    <div id="projectbrief">s2n-tls is a C99 implementation of the TLS/SSL protocols that is designed to be simple, small, fast, and with security as a priority.</div>
   </td>
@@ -457,6 +457,8 @@ Functions</h2></td></tr>
 <tr class="separator:a59be9ad4336811d9910f07bb74edb364"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae6d6a59a875a39fdd9f81ae02595173d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="s2n_8h.html#af1c2b8586154a9094d6978137ef001ac">S2N_API</a> int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="s2n_8h.html#ae6d6a59a875a39fdd9f81ae02595173d">s2n_config_add_ticket_crypto_key</a> (struct s2n_config *config, const uint8_t *name, uint32_t name_len, uint8_t *key, uint32_t key_len, uint64_t intro_time_in_seconds_from_epoch)</td></tr>
 <tr class="separator:ae6d6a59a875a39fdd9f81ae02595173d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a83b61c7518ebbb88cf0c481dd3412b48"><td class="memItemLeft" align="right" valign="top"><a class="el" href="s2n_8h.html#af1c2b8586154a9094d6978137ef001ac">S2N_API</a> int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="s2n_8h.html#a83b61c7518ebbb88cf0c481dd3412b48">s2n_config_require_ticket_forward_secrecy</a> (struct s2n_config *config, bool enabled)</td></tr>
+<tr class="separator:a83b61c7518ebbb88cf0c481dd3412b48"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a99493d7c1f33f5f5390dd0fdd95ab431"><td class="memItemLeft" align="right" valign="top"><a class="el" href="s2n_8h.html#af1c2b8586154a9094d6978137ef001ac">S2N_API</a> int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="s2n_8h.html#a99493d7c1f33f5f5390dd0fdd95ab431">s2n_config_set_ctx</a> (struct s2n_config *config, void *ctx)</td></tr>
 <tr class="separator:a99493d7c1f33f5f5390dd0fdd95ab431"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab325136d7c254e6f72d2a134ad59f759"><td class="memItemLeft" align="right" valign="top"><a class="el" href="s2n_8h.html#af1c2b8586154a9094d6978137ef001ac">S2N_API</a> int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="s2n_8h.html#ab325136d7c254e6f72d2a134ad59f759">s2n_config_get_ctx</a> (struct s2n_config *config, void **ctx)</td></tr>
@@ -4314,6 +4316,45 @@ s2n-tls has never supported compression methods in any TLS version and therefore
 
 </div>
 </div>
+<a id="a83b61c7518ebbb88cf0c481dd3412b48" name="a83b61c7518ebbb88cf0c481dd3412b48"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a83b61c7518ebbb88cf0c481dd3412b48">&#9670;&#160;</a></span>s2n_config_require_ticket_forward_secrecy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="s2n_8h.html#af1c2b8586154a9094d6978137ef001ac">S2N_API</a> int s2n_config_require_ticket_forward_secrecy </td>
+          <td>(</td>
+          <td class="paramtype">struct s2n_config *&#160;</td>
+          <td class="paramname"><em>config</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>enabled</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p >Requires that session tickets are only used when forward secrecy is possible.</p>
+<p >Restricts session resumption to TLS1.3, as the tickets used in TLS1.2 resumption are not forward secret. Clients should not expect to receive new session tickets and servers will not send new session tickets when TLS1.2 is negotiated and ticket forward secrecy is required.</p>
+<dl class="section note"><dt>Note</dt><dd>The default behavior is that forward secrecy is not required.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>The config object being updated </td></tr>
+    <tr><td class="paramname">enabled</td><td>Indicates if forward secrecy is required or not on tickets </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>S2N_SUCCESS on success. S2N_FAILURE on failure </dd></dl>
+
+</div>
+</div>
 <a id="a0f2ab042e1f9dea7ff02b3746dc16188" name="a0f2ab042e1f9dea7ff02b3746dc16188"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0f2ab042e1f9dea7ff02b3746dc16188">&#9670;&#160;</a></span>s2n_config_send_max_fragment_length()</h2>
 
@@ -5705,6 +5746,7 @@ Safety</h1>
       </table>
 </div><div class="memdoc">
 <p >Sets up a connection to request the certificate status of a peer during an SSL handshake. If set to S2N_STATUS_REQUEST_NONE, no status request is made.</p>
+<dl class="section note"><dt>Note</dt><dd>SHA-1 is the only supported hash algorithm for the <code>certID</code> field. This is different from the hash algorithm used for the OCSP signature. See <a href="https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1">RFC 6960</a> for more information. While unlikely to be the case, if support for a different hash algorithm is required, the s2n-tls validation can be disabled with <code><a class="el" href="s2n_8h.html#affff244d7ed6f3b8d1f885df1b307f4e">s2n_config_set_check_stapled_ocsp_response()</a></code> and the response can be retrieved for manual validation with <code><a class="el" href="s2n_8h.html#a8ad8092d7c616efd40bb0145c4895f1f">s2n_connection_get_ocsp_response()</a></code>.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">config</td><td>The configuration object being updated </td></tr>
