@@ -39,6 +39,8 @@ phases:
   post_build:
     on-failure: ABORT
     commands:
+      - echo "CTEST_PARALLEL_LEVEL:"
+      - echo "${CTEST_PARALLEL_LEVEL}"
       # Run the s2n-tls tests with the assumption that the RAND engine override feature will be
       # disabled. This will enable tests that ensure it's disabled.
       - export S2N_DISABLE_RAND_ENGINE_OVERRIDE_EXPECTED=1
