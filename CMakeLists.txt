@@ -62,6 +62,9 @@ file(GLOB_RECURSE TLS_SRC "tls/*.c")
 file(GLOB UTILS_HEADERS "utils/*.h")
 file(GLOB UTILS_SRC "utils/*.c")
 
+file(GLOB EVENTS_HEADERS "events/*.h")
+file(GLOB EVENTS_SRC "events/*.c")
+
 message(STATUS "Detected CMAKE_SYSTEM_PROCESSOR as ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -78,12 +81,14 @@ if(MSVC)
     source_group("Header Files\\s2n\\stuffer" FILES ${STUFFER_HEADERS})
     source_group("Header Files\\s2n\\tls" FILES ${TLS_HEADERS})
     source_group("Header Files\\s2n\\utils" FILES ${UTILS_HEADERS})
+    source_group("Header Files\\s2n\\events" FILES ${EVENTS_HEADERS})
 
     source_group("Source Files\\crypto" FILES ${CRYPTO_SRC})
     source_group("Source Files\\error" FILES ${ERROR_SRC})
     source_group("Source Files\\stuffer" FILES ${STUFFER_SRC})
     source_group("Source Files\\tls" FILES ${TLS_SRC})
     source_group("Source Files\\utils" FILES ${UTILS_SRC})
+    source_group("Source Files\\events" FILES ${EVENTS_SRC})
 else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
@@ -111,6 +116,7 @@ file(GLOB S2N_HEADERS
     ${STUFFER_HEADERS}
     ${TLS_HEADERS}
     ${UTILS_HEADERS}
+    ${EVENTS_HEADERS}
 )
 
 file(GLOB S2N_SRC
@@ -119,6 +125,7 @@ file(GLOB S2N_SRC
     ${STUFFER_SRC}
     ${TLS_SRC}
     ${UTILS_SRC}
+    ${EVENTS_SRC}
 )
 
 add_library(${PROJECT_NAME} ${S2N_HEADERS} ${S2N_SRC})
