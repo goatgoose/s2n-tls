@@ -16,6 +16,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct s2n_metrics_value {
     double data;
@@ -23,7 +24,7 @@ struct s2n_metrics_value {
 };
 
 struct s2n_metrics_value_list {
-    struct s2n_metrics_value values[10];
+    struct s2n_metrics_value **values;
     uint16_t values_count;
     uint16_t position;
 };
@@ -34,53 +35,53 @@ typedef enum {
 } s2n_metrics_unit;
 
 struct s2n_metrics_metric {
-    char *metric_name;
+    const char *metric_name;
     s2n_metrics_unit unit;
     struct s2n_metrics_value_list *values;
 };
 
 struct s2n_metrics_metric_list {
-    struct s2n_metrics_metric metrics[10];
+    struct s2n_metrics_metric **metrics;
     uint16_t metrics_count;
     uint16_t position;
 };
 
 struct s2n_metrics_dimension_instance {
-    char *instance_name;
+    const char *instance_name;
     struct s2n_metrics_metric_list *metrics;
 };
 
 struct s2n_metrics_dimension_instance_list {
-    struct s2n_metrics_dimension_instance instances[10];
+    struct s2n_metrics_dimension_instance **instances;
     uint16_t instances_count;
     uint16_t position;
 };
 
 struct s2n_metrics_dimension {
-    char *dimension_name;
+    const char *dimension_name;
     struct s2n_metrics_dimension_instance_list *instances;
 };
 
 struct s2n_metrics_dimension_list {
-    struct s2n_metrics_dimension dimensions[10];
+    struct s2n_metrics_dimension **dimensions;
     uint16_t dimensions_count;
     uint16_t position;
 };
 
 struct s2n_metrics_service {
-    char *service_name;
+    const char *service_name;
     struct s2n_metrics_metric_list *metric_list;
     struct s2n_metrics_dimension_list *dimensions;
 };
 
 struct s2n_metrics_service_list {
-    struct s2n_metrics_service services[10];
+    struct s2n_metrics_service **services;
     uint16_t services_count;
     uint16_t position;
 };
 
 struct s2n_metrics_snapshot {
-    char *marketplace;
+    const char *marketplace;
     double timestamp;
     struct s2n_metrics_service_list *services;
 };
@@ -91,14 +92,14 @@ struct s2n_metrics_subscriber {
 
 int s2n_metrics_subscriber_get_snapshot(struct s2n_metrics_subscriber *subscriber, struct s2n_metrics_snapshot **snapshot);
 
-int s2n_metrics_snapshot_get_marketplace(struct s2n_metrics_snapshot *snapshot, char **marketplace);
+int s2n_metrics_snapshot_get_marketplace(struct s2n_metrics_snapshot *snapshot, const char **marketplace);
 int s2n_metrics_snapshot_get_services_list(struct s2n_metrics_snapshot *snapshot, struct s2n_metrics_service_list **service_list);
 
 bool s2n_metrics_service_list_has_next(struct s2n_metrics_service_list *service_list);
 int s2n_metrics_service_list_next(struct s2n_metrics_service_list *service_list, struct s2n_metrics_service **service);
 int s2n_metrics_service_list_rewind(struct s2n_metrics_service_list *service_list);
 
-int s2n_metrics_service_get_name(struct s2n_metrics_service *service, char **service_name);
+int s2n_metrics_service_get_name(struct s2n_metrics_service *service, const char **service_name);
 int s2n_metrics_service_get_metric_list(struct s2n_metrics_service *service, struct s2n_metrics_metric_list **metric_list);
 int s2n_metrics_service_get_dimension_list(struct s2n_metrics_service *service, struct s2n_metrics_dimension_list **dimension_list);
 
@@ -106,21 +107,21 @@ bool s2n_metrics_dimension_list_has_next(struct s2n_metrics_dimension_list *dime
 int s2n_metrics_dimension_list_next(struct s2n_metrics_dimension_list *dimension_list, struct s2n_metrics_dimension **dimension);
 int s2n_metrics_dimension_list_rewind(struct s2n_metrics_dimension_list *dimension_list);
 
-int s2n_metrics_dimension_get_name(struct s2n_metrics_dimension *dimension, char **dimension_name);
+int s2n_metrics_dimension_get_name(struct s2n_metrics_dimension *dimension, const char **dimension_name);
 int s2n_metrics_dimension_get_dimension_instance_list(struct s2n_metrics_dimension *dimension, struct s2n_metrics_dimension_instance_list **instance_list);
 
 bool s2n_metrics_dimension_instance_list_has_next(struct s2n_metrics_dimension_instance_list *instance_list);
 int s2n_metrics_dimension_instance_list_next(struct s2n_metrics_dimension_instance_list *instance_list, struct s2n_metrics_dimension_instance **instance);
 int s2n_metrics_dimension_instance_list_rewind(struct s2n_metrics_dimension_instance_list *instance_list);
 
-int s2n_metrics_dimension_instance_get_name(struct s2n_metrics_dimension_instance *instance, char **instance_name);
+int s2n_metrics_dimension_instance_get_name(struct s2n_metrics_dimension_instance *instance, const char **instance_name);
 int s2n_metrics_dimension_instance_get_metric_list(struct s2n_metrics_dimension_instance *instance, struct s2n_metrics_metric_list **metric_list);
 
 bool s2n_metrics_metric_list_has_next(struct s2n_metrics_metric_list *metric_list);
 int s2n_metrics_metric_list_next(struct s2n_metrics_metric_list *metric_list, struct s2n_metrics_metric **metric);
 int s2n_metrics_metric_list_rewind(struct s2n_metrics_metric_list *metric_list);
 
-int s2n_metrics_metric_get_name(struct s2n_metrics_metric *metric, char **name);
+int s2n_metrics_metric_get_name(struct s2n_metrics_metric *metric, const char **name);
 int s2n_metrics_metric_get_unit(struct s2n_metrics_metric *metric, s2n_metrics_unit *unit);
 int s2n_metrics_metric_get_value_list(struct s2n_metrics_metric *metric, struct s2n_metrics_value_list **value_list);
 

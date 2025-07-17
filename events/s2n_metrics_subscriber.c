@@ -10,7 +10,7 @@ int s2n_metrics_subscriber_get_snapshot(struct s2n_metrics_subscriber *subscribe
     return S2N_SUCCESS;
 }
 
-int s2n_metrics_snapshot_get_marketplace(struct s2n_metrics_snapshot *snapshot, char **marketplace)
+int s2n_metrics_snapshot_get_marketplace(struct s2n_metrics_snapshot *snapshot, const char **marketplace)
 {
     POSIX_ENSURE_REF(snapshot);
     POSIX_ENSURE_REF(marketplace);
@@ -37,7 +37,7 @@ int s2n_metrics_service_list_next(struct s2n_metrics_service_list *service_list,
     POSIX_ENSURE_REF(service_list);
     POSIX_ENSURE_REF(service);
     POSIX_ENSURE(s2n_metrics_service_list_has_next(service_list), S2N_ERR_INVALID_ARGUMENT);
-    *service = &service_list->services[service_list->position];
+    *service = service_list->services[service_list->position];
     service_list->position += 1;
     return S2N_SUCCESS;
 }
@@ -49,7 +49,7 @@ int s2n_metrics_service_list_rewind(struct s2n_metrics_service_list *service_lis
     return S2N_SUCCESS;
 }
 
-int s2n_metrics_service_get_name(struct s2n_metrics_service *service, char **service_name)
+int s2n_metrics_service_get_name(struct s2n_metrics_service *service, const char **service_name)
 {
     POSIX_ENSURE_REF(service);
     POSIX_ENSURE_REF(service_name);
@@ -86,7 +86,8 @@ int s2n_metrics_dimension_list_next(struct s2n_metrics_dimension_list *dimension
     POSIX_ENSURE_REF(dimension_list);
     POSIX_ENSURE_REF(dimension);
     POSIX_ENSURE(s2n_metrics_dimension_list_has_next(dimension_list), S2N_ERR_INVALID_ARGUMENT);
-    *dimension = &dimension_list->dimensions[dimension_list->position];
+    *dimension = dimension_list->dimensions[dimension_list->position];
+    dimension_list->position += 1;
     return S2N_SUCCESS;
 }
 
@@ -97,7 +98,7 @@ int s2n_metrics_dimension_list_rewind(struct s2n_metrics_dimension_list *dimensi
     return S2N_SUCCESS;
 }
 
-int s2n_metrics_dimension_get_name(struct s2n_metrics_dimension *dimension, char **dimension_name)
+int s2n_metrics_dimension_get_name(struct s2n_metrics_dimension *dimension, const char **dimension_name)
 {
     POSIX_ENSURE_REF(dimension);
     POSIX_ENSURE_REF(dimension_name);
@@ -125,7 +126,8 @@ int s2n_metrics_dimension_instance_list_next(struct s2n_metrics_dimension_instan
     POSIX_ENSURE_REF(instance_list);
     POSIX_ENSURE_REF(instance);
     POSIX_ENSURE(s2n_metrics_dimension_instance_list_has_next(instance_list), S2N_ERR_INVALID_ARGUMENT);
-    *instance = &instance_list->instances[instance_list->position];
+    *instance = instance_list->instances[instance_list->position];
+    instance_list->position += 1;
     return S2N_SUCCESS;
 }
 
@@ -136,7 +138,7 @@ int s2n_metrics_dimension_instance_list_rewind(struct s2n_metrics_dimension_inst
     return S2N_SUCCESS;
 }
 
-int s2n_metrics_dimension_instance_get_name(struct s2n_metrics_dimension_instance *instance, char **instance_name)
+int s2n_metrics_dimension_instance_get_name(struct s2n_metrics_dimension_instance *instance, const char **instance_name)
 {
     POSIX_ENSURE_REF(instance);
     POSIX_ENSURE_REF(instance_name);
@@ -163,7 +165,8 @@ int s2n_metrics_metric_list_next(struct s2n_metrics_metric_list *metric_list, st
     POSIX_ENSURE_REF(metric_list);
     POSIX_ENSURE_REF(metric);
     POSIX_ENSURE(s2n_metrics_metric_list_has_next(metric_list), S2N_ERR_INVALID_ARGUMENT);
-    *metric = &metric_list->metrics[metric_list->position];
+    *metric = metric_list->metrics[metric_list->position];
+    metric_list->position += 1;
     return S2N_SUCCESS;
 }
 
@@ -174,7 +177,7 @@ int s2n_metrics_metric_list_rewind(struct s2n_metrics_metric_list *metric_list)
     return S2N_SUCCESS;
 }
 
-int s2n_metrics_metric_get_name(struct s2n_metrics_metric *metric, char **name)
+int s2n_metrics_metric_get_name(struct s2n_metrics_metric *metric, const char **name)
 {
     POSIX_ENSURE_REF(metric);
     POSIX_ENSURE_REF(name);
@@ -208,7 +211,8 @@ int s2n_metrics_value_list_next(struct s2n_metrics_value_list *value_list, struc
     POSIX_ENSURE_REF(value_list);
     POSIX_ENSURE_REF(value);
     POSIX_ENSURE(s2n_metrics_value_list_has_next(value_list), S2N_ERR_INVALID_ARGUMENT);
-    *value = &value_list->values[value_list->position];
+    *value = value_list->values[value_list->position];
+    value_list->position += 1;
     return S2N_SUCCESS;
 }
 
