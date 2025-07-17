@@ -1,0 +1,8 @@
+[package]
+name = "s2n-tls-rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+s2n-quic-core = { version = "0.61", features = ["testing"] }
+tracing = { version = "0.1" }
