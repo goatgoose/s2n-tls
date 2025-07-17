@@ -267,34 +267,37 @@ static int print_querylog_format(struct s2n_metrics_subscriber *subscriber)
                                 
                                 const char *metric_name = NULL;
                                 POSIX_GUARD(s2n_metrics_metric_get_name(metric, &metric_name));
-                                
-                                struct s2n_metrics_value_list *values = NULL;
-                                POSIX_GUARD(s2n_metrics_metric_get_value_list(metric, &values));
-                                
-                                /* Calculate weighted sum: sum of (data * count) for histogram metrics */
-                                double total_value = 0.0;
-                                if (values) {
-                                    POSIX_GUARD(s2n_metrics_value_list_rewind(values));
-                                    while (s2n_metrics_value_list_has_next(values)) {
-                                        struct s2n_metrics_value *value = NULL;
-                                        POSIX_GUARD(s2n_metrics_value_list_next(values, &value));
-                                        
-                                        double data = 0.0;
-                                        uint16_t count = 0;
-                                        POSIX_GUARD(s2n_metrics_value_get_data(value, &data));
-                                        POSIX_GUARD(s2n_metrics_value_get_count(value, &count));
-                                        
-                                        /* For histogram data, multiply data by count */
-                                        total_value += data * count;
-                                    }
-                                }
-                                
+
                                 /* Print metric in format: DimensionName|InstanceName|MetricName=value */
                                 if (!first_metric) {
                                     printf(",");
                                 }
-                                printf("%s|%s|%s=%.1f", dimension_name, instance_name, metric_name, total_value);
+                                printf("%s|%s|%s=", dimension_name, instance_name, metric_name);
                                 first_metric = false;
+
+                                struct s2n_metrics_value_list *values = NULL;
+                                POSIX_GUARD(s2n_metrics_metric_get_value_list(metric, &values));
+
+                                bool first_value = true;
+                                while (s2n_metrics_value_list_has_next(values)) {
+                                    struct s2n_metrics_value *value = NULL;
+                                    POSIX_GUARD(s2n_metrics_value_list_next(values, &value));
+
+                                    double data = 0.0;
+                                    uint16_t count = 0;
+                                    POSIX_GUARD(s2n_metrics_value_get_data(value, &data));
+                                    POSIX_GUARD(s2n_metrics_value_get_count(value, &count));
+
+                                    if (!first_value) {
+                                        printf("+");
+                                    }
+                                    if (count > 1) {
+                                        printf("%d*", count);
+                                    }
+                                    printf("%.1f", data);
+
+                                    first_value = false;
+                                }
                             }
                         }
                     }
