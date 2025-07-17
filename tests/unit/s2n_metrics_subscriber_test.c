@@ -209,17 +209,14 @@ static int print_querylog_format(struct s2n_metrics_subscriber *subscriber)
     
     struct s2n_metrics_service_list *services = NULL;
     POSIX_GUARD(s2n_metrics_snapshot_get_services_list(snapshot, &services));
-    
-    /* Process each service */
-    POSIX_GUARD(s2n_metrics_service_list_rewind(services));
+
     while (s2n_metrics_service_list_has_next(services)) {
         struct s2n_metrics_service *service = NULL;
         POSIX_GUARD(s2n_metrics_service_list_next(services, &service));
         
         const char *service_name = NULL;
         POSIX_GUARD(s2n_metrics_service_get_name(service, &service_name));
-        
-        /* Print QueryLog header */
+
         printf("---------------------------------\n");
         printf("StartTime=%.1f\n", snapshot->timestamp);
         printf("Program=%s\n", service_name);
@@ -228,78 +225,81 @@ static int print_querylog_format(struct s2n_metrics_subscriber *subscriber)
         
         /* Build metrics line */
         printf("Metrics=");
-        
+
         bool first_metric = true;
-        
-        /* Process dimensional metrics */
+
         struct s2n_metrics_dimension_list *dimensions = NULL;
         POSIX_GUARD(s2n_metrics_service_get_dimension_list(service, &dimensions));
-        
-        if (dimensions) {
-            POSIX_GUARD(s2n_metrics_dimension_list_rewind(dimensions));
-            while (s2n_metrics_dimension_list_has_next(dimensions)) {
-                struct s2n_metrics_dimension *dimension = NULL;
-                POSIX_GUARD(s2n_metrics_dimension_list_next(dimensions, &dimension));
-                
-                const char *dimension_name = NULL;
-                POSIX_GUARD(s2n_metrics_dimension_get_name(dimension, &dimension_name));
-                
-                struct s2n_metrics_dimension_instance_list *instances = NULL;
-                POSIX_GUARD(s2n_metrics_dimension_get_dimension_instance_list(dimension, &instances));
-                
-                if (instances) {
-                    POSIX_GUARD(s2n_metrics_dimension_instance_list_rewind(instances));
-                    while (s2n_metrics_dimension_instance_list_has_next(instances)) {
-                        struct s2n_metrics_dimension_instance *instance = NULL;
-                        POSIX_GUARD(s2n_metrics_dimension_instance_list_next(instances, &instance));
-                        
-                        const char *instance_name = NULL;
-                        POSIX_GUARD(s2n_metrics_dimension_instance_get_name(instance, &instance_name));
-                        
-                        struct s2n_metrics_metric_list *metric_list = NULL;
-                        POSIX_GUARD(s2n_metrics_dimension_instance_get_metric_list(instance, &metric_list));
-                        
-                        if (metric_list) {
-                            POSIX_GUARD(s2n_metrics_metric_list_rewind(metric_list));
-                            while (s2n_metrics_metric_list_has_next(metric_list)) {
-                                struct s2n_metrics_metric *metric = NULL;
-                                POSIX_GUARD(s2n_metrics_metric_list_next(metric_list, &metric));
-                                
-                                const char *metric_name = NULL;
-                                POSIX_GUARD(s2n_metrics_metric_get_name(metric, &metric_name));
 
-                                /* Print metric in format: DimensionName|InstanceName|MetricName=value */
-                                if (!first_metric) {
-                                    printf(",");
-                                }
-                                printf("%s|%s|%s=", dimension_name, instance_name, metric_name);
-                                first_metric = false;
+        while (s2n_metrics_dimension_list_has_next(dimensions)) {
+            struct s2n_metrics_dimension *dimension = NULL;
+            POSIX_GUARD(s2n_metrics_dimension_list_next(dimensions, &dimension));
 
-                                struct s2n_metrics_value_list *values = NULL;
-                                POSIX_GUARD(s2n_metrics_metric_get_value_list(metric, &values));
+            const char *dimension_name = NULL;
+            POSIX_GUARD(s2n_metrics_dimension_get_name(dimension, &dimension_name));
 
-                                bool first_value = true;
-                                while (s2n_metrics_value_list_has_next(values)) {
-                                    struct s2n_metrics_value *value = NULL;
-                                    POSIX_GUARD(s2n_metrics_value_list_next(values, &value));
+            struct s2n_metrics_dimension_instance_list *instances = NULL;
+            POSIX_GUARD(s2n_metrics_dimension_get_dimension_instance_list(dimension, &instances));
 
-                                    double data = 0.0;
-                                    uint16_t count = 0;
-                                    POSIX_GUARD(s2n_metrics_value_get_data(value, &data));
-                                    POSIX_GUARD(s2n_metrics_value_get_count(value, &count));
+            while (s2n_metrics_dimension_instance_list_has_next(instances)) {
+                struct s2n_metrics_dimension_instance *instance = NULL;
+                POSIX_GUARD(s2n_metrics_dimension_instance_list_next(instances, &instance));
 
-                                    if (!first_value) {
-                                        printf("+");
-                                    }
-                                    if (count > 1) {
-                                        printf("%d*", count);
-                                    }
-                                    printf("%.1f", data);
+                const char *instance_name = NULL;
+                POSIX_GUARD(s2n_metrics_dimension_instance_get_name(instance, &instance_name));
 
-                                    first_value = false;
-                                }
-                            }
+                struct s2n_metrics_metric_list *metric_list = NULL;
+                POSIX_GUARD(s2n_metrics_dimension_instance_get_metric_list(instance, &metric_list));
+
+                while (s2n_metrics_metric_list_has_next(metric_list)) {
+                    struct s2n_metrics_metric *metric = NULL;
+                    POSIX_GUARD(s2n_metrics_metric_list_next(metric_list, &metric));
+
+                    const char *metric_name = NULL;
+                    POSIX_GUARD(s2n_metrics_metric_get_name(metric, &metric_name));
+
+                    /* Each metric is seperated by a comma. For example:
+                     * Metrics=Rock=276,Paper=87
+                     */
+                    if (!first_metric) {
+                        printf(",");
+                    }
+                    first_metric = false;
+
+                    /* The MetricClass (dimension) and Instance (dimension instance) fields are specified with |.
+                     * For example:
+                     * Metrics=Store|Hardline|TaxCalcTime=57 ms
+                     */
+                    printf("%s|%s|%s=", dimension_name, instance_name, metric_name);
+
+                    struct s2n_metrics_value_list *values = NULL;
+                    POSIX_GUARD(s2n_metrics_metric_get_value_list(metric, &values));
+
+                    bool first_value = true;
+                    while (s2n_metrics_value_list_has_next(values)) {
+                        struct s2n_metrics_value *value = NULL;
+                        POSIX_GUARD(s2n_metrics_value_list_next(values, &value));
+
+                        double data = 0.0;
+                        uint16_t count = 0;
+                        POSIX_GUARD(s2n_metrics_value_get_data(value, &data));
+                        POSIX_GUARD(s2n_metrics_value_get_count(value, &count));
+
+                        /* Each value group is separated by a +.
+                         * For example:
+                         * Metrics=CallTime=5.3+3*4+.7 ms
+                         */
+                        if (!first_value) {
+                            printf("+");
                         }
+                        first_value = false;
+
+                        /* Repeated values can be abbreviated by specifying `count` * `value`. */
+                        if (count > 1) {
+                            printf("%d*", count);
+                        }
+
+                        printf("%.1f", data);
                     }
                 }
             }
