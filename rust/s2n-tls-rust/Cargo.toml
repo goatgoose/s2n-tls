@@ -6,3 +6,7 @@ edition = "2024"
 [dependencies]
 s2n-quic-core = { version = "0.61", features = ["testing"] }
 tracing = { version = "0.1" }
+
+[lib]
+name = "s2n_rust"
+crate-type = ["cdylib"]

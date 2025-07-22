@@ -468,6 +468,13 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OS_LIBS} m)
 
+set(S2N_RUST_DIR "${CMAKE_SOURCE_DIR}/rust/s2n-tls-rust/target/debug")
+set(S2N_RUST_LIB "s2n_rust")
+message(STATUS "linking ${S2N_RUST_LIB} from ${S2N_RUST_DIR}")
+
+link_directories("${S2N_RUST_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC "${S2N_RUST_LIB}")
+
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api> $<INSTALL_INTERFACE:include>)
 
