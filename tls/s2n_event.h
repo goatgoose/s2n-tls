@@ -16,3 +16,6 @@
 #pragma once
 
 void rust_function();
+
+void *subscriber_create_connection_context(void *subscriber);
+int subscriber_on_application_protocol_information(void *subscriber, void *context, uint8_t *alpn, uint32_t alpn_len);

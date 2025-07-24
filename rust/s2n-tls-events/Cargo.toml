@@ -1,0 +1,12 @@
+[package]
+name = "s2n-tls-events"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+s2n-quic-core = { version = "0.61", features = ["testing"] }
+tracing = { version = "0.1" }
+
+[lib]
+name = "s2n_tls_events"
+crate-type = ["cdylib", "rlib"]

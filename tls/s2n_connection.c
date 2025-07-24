@@ -56,6 +56,7 @@
 #include "utils/s2n_safety.h"
 #include "utils/s2n_socket.h"
 #include "utils/s2n_timer.h"
+#include "tls/s2n_event.h"
 
 #define S2N_SET_KEY_SHARE_LIST_EMPTY(keyshares) (keyshares |= 1)
 #define S2N_SET_KEY_SHARE_REQUEST(keyshares, i) (keyshares |= (1 << (i + 1)))
@@ -374,6 +375,11 @@ int s2n_connection_set_config(struct s2n_connection *conn, struct s2n_config *co
     conn->request_ocsp_status = config->ocsp_status_requested_by_user;
     if (config->ocsp_status_requested_by_s2n && conn->mode == S2N_CLIENT) {
         conn->request_ocsp_status = true;
+    }
+
+    if (config->event_subscriber) {
+        conn->event_context = subscriber_create_connection_context(config->event_subscriber);
+        POSIX_ENSURE_REF(conn->event_context);
     }
 
     conn->config = config;

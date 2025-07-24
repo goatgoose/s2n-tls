@@ -2,7 +2,7 @@
 members = [
     "client-hello-config-resolution",
     "hyper-server-client", "key-logging",
-    "tokio-server-client",
+    "tokio-server-client", "events",
 ]
 resolver = "2"
 

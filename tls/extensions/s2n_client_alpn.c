@@ -23,6 +23,7 @@
 #include "tls/s2n_tls.h"
 #include "tls/s2n_tls_parameters.h"
 #include "utils/s2n_safety.h"
+#include "tls/s2n_event.h"
 
 bool s2n_client_alpn_should_send(struct s2n_connection *conn);
 static int s2n_client_alpn_send(struct s2n_connection *conn, struct s2n_stuffer *out);
@@ -59,6 +60,9 @@ static int s2n_client_alpn_send(struct s2n_connection *conn, struct s2n_stuffer 
 
 static int s2n_client_alpn_recv(struct s2n_connection *conn, struct s2n_stuffer *extension)
 {
+    POSIX_ENSURE_REF(conn);
+    POSIX_ENSURE_REF(conn->config);
+
     struct s2n_blob *supported_protocols = NULL;
     POSIX_GUARD(s2n_connection_get_protocol_preferences(conn, &supported_protocols));
     POSIX_ENSURE_REF(supported_protocols);
@@ -83,6 +87,16 @@ static int s2n_client_alpn_recv(struct s2n_connection *conn, struct s2n_stuffer 
     POSIX_GUARD(s2n_stuffer_skip_write(&server_protocols, supported_protocols->size));
 
     POSIX_GUARD_RESULT(s2n_select_server_preference_protocol(conn, &server_protocols, &client_protocols));
+
+    printf("alpn decided!\n");
+    if (conn->config->event_subscriber) {
+        printf("subscriber registered\n");
+        POSIX_ENSURE_REF(conn->event_context);
+        printf("context created\n");
+        subscriber_on_application_protocol_information(conn->config->event_subscriber, conn->event_context,
+            (uint8_t *) conn->application_protocol, strlen(conn->application_protocol));
+        printf("event published\n");
+    }
 
     return S2N_SUCCESS;
 }

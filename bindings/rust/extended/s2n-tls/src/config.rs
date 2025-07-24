@@ -22,6 +22,8 @@ use std::{
     task::Poll,
     time::{Duration, SystemTime},
 };
+use s2n_tls_events::event;
+use s2n_tls_events::event::metrics::Subscriber;
 
 /// Corresponds to [s2n_config].
 #[derive(Debug, PartialEq)]
@@ -997,6 +999,16 @@ impl Builder {
             s2n_config_set_cert_authorities_from_trust_store(self.as_mut_ptr()).into_result()?;
         }
 
+        Ok(())
+    }
+
+    pub fn set_event_subscriber<S>(&mut self, subscriber: S) -> Result<(), Error>
+    where
+        S: event::Subscriber + 'static + Send + Sync,
+    {
+        unsafe {
+            s2n_config_set_event_subscriber(self.as_mut_ptr(), s2n_tls_events::ffi::ffi::c_bridge::subscriber_to_ptr(subscriber)).into_result()?;
+        }
         Ok(())
     }
 }

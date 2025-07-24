@@ -10,6 +10,8 @@ extern crate alloc;
 #[global_allocator]
 static ALLOCATOR: checkers::Allocator = checkers::Allocator::system();
 
+pub use s2n_tls_events::event;
+
 #[macro_use]
 pub mod error;
 

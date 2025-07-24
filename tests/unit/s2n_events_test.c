@@ -17,7 +17,7 @@
 #include "error/s2n_errno.h"
 #include "s2n_test.h"
 #include "testlib/s2n_testlib.h"
-#include "tls/s2n_events.h"
+#include "tls/s2n_event.h"
 
 int main(void)
 {

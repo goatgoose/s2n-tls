@@ -1280,3 +1280,11 @@ int s2n_config_set_max_blinding_delay(struct s2n_config *config, uint32_t second
 
     return S2N_SUCCESS;
 }
+
+int s2n_config_set_event_subscriber(struct s2n_config *config, void *subscriber)
+{
+    POSIX_ENSURE_REF(config);
+    POSIX_ENSURE_REF(subscriber);
+    config->event_subscriber = subscriber;
+    return S2N_SUCCESS;
+}

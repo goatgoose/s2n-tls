@@ -150,6 +150,12 @@ fn build_vendored() {
 
     build.compile("s2n-tls");
 
+    println!(
+        "cargo:rustc-link-search={}",
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../rust/s2n-tls-events/target/debug")
+    );
+    println!("cargo:rustc-link-lib=s2n_tls_events");
+
     // linking to the libcrypto is handled by the rust compiler through the
     // `extern crate aws_lc_rs as _;` statement included in the generated source
     // files. This is less brittle than manually linking the libcrypto artifact.

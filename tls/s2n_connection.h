@@ -156,6 +156,8 @@ struct s2n_connection {
     /* The user defined context associated with connection */
     void *context;
 
+    void *event_context;
+
     /* The user defined secret callback and context */
     s2n_secret_cb secret_cb;
     void *secret_cb_context;

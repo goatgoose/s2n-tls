@@ -468,8 +468,8 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OS_LIBS} m)
 
-set(S2N_RUST_DIR "${CMAKE_SOURCE_DIR}/rust/s2n-tls-rust/target/debug")
-set(S2N_RUST_LIB "s2n_rust")
+set(S2N_RUST_DIR "${CMAKE_SOURCE_DIR}/rust/s2n-tls-events/target/debug")
+set(S2N_RUST_LIB "s2n_tls_events")
 message(STATUS "linking ${S2N_RUST_LIB} from ${S2N_RUST_DIR}")
 
 link_directories("${S2N_RUST_DIR}")
