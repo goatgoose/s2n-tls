@@ -13,21 +13,24 @@ pub mod ffi {
     pub mod c_bridge {
         use std::any::Any;
         use std::ffi::c_void;
-        use crate::event::{api, Subscriber};
+        use std::time::SystemTime;
+        use s2n_quic_core::event::IntoEvent;
+        use crate::event;
+        use crate::event::{api, ConnectionPublisher, ConnectionPublisherSubscriber, Subscriber};
         use crate::event::api::{ApplicationProtocolInformation, ConnectionInfo, ConnectionMeta};
 
         pub trait ErasedEventSubscriber: 'static + Send + Sync {
             fn create_connection_context_erased(
                 &self,
-                meta: &api::ConnectionMeta,
-                info: &api::ConnectionInfo,
+                meta: &ConnectionMeta,
+                info: &ConnectionInfo,
             ) -> Box<dyn Any + Send + Sync + 'static>;
 
             fn on_application_protocol_information_erased(
                 &self,
                 context: &dyn Any,
-                meta: &api::ConnectionMeta,
-                event: &api::ApplicationProtocolInformation,
+                meta: event::builder::ConnectionMeta,
+                event: event::builder::ApplicationProtocolInformation,
             ) {
                 let _ = context;
                 let _ = meta;
@@ -83,9 +86,15 @@ pub mod ffi {
                 Box::new(self.inner.create_connection_context(meta, info))
             }
 
-            fn on_application_protocol_information_erased(&self, context: &dyn Any, meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
+            fn on_application_protocol_information_erased(&self, context: &dyn Any, meta: event::builder::ConnectionMeta, event: event::builder::ApplicationProtocolInformation) {
                 let typed_context = context.downcast_ref::<S::ConnectionContext>().unwrap();
-                self.inner.on_application_protocol_information(typed_context, meta, event);
+                let publisher = ConnectionPublisherSubscriber::new(
+                    meta,
+                    1,
+                    &self.inner,
+                    &typed_context,
+                );
+                publisher.on_application_protocol_information(event);
             }
 
             // fn on_event_erased<M: Meta, E: Event>(&self, meta: &M, event: &E) {
@@ -149,16 +158,16 @@ pub mod ffi {
                 let context = &**context_box;
 
                 // TODO: create in C and pass in to function
-                let meta = api::ConnectionMeta {
+                let meta = crate::event::builder::ConnectionMeta {
                     id: 0,
                     timestamp: s2n_quic_core::time::Timestamp::from_duration(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()).into_event(),
                 };
 
-                let event = api::ApplicationProtocolInformation {
+                let event = crate::event::builder::ApplicationProtocolInformation {
                     chosen_application_protocol: std::slice::from_raw_parts(alpn, alpn_len.try_into().unwrap()),
                 };
 
-                subscriber.on_application_protocol_information_erased(context, &meta, &event);
+                subscriber.on_application_protocol_information_erased(context, meta, event);
             }
 
             0

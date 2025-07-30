@@ -7,6 +7,7 @@ use s2n_tls_tokio::TlsAcceptor;
 use std::{error::Error, fs};
 use std::sync::atomic::AtomicU64;
 use s2n_tls::event::api::{ApplicationProtocolInformation, ConnectionInfo, ConnectionMeta};
+use s2n_tls::event::{Event, Meta};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 /// NOTE: this certificate and key are to be used for demonstration purposes only!
@@ -45,6 +46,10 @@ impl event::Subscriber for MyEventSubscriber {
 
         println!("context counter: {}", context.counter.load(std::sync::atomic::Ordering::Relaxed));
         println!("global_counter: {}", self.global_counter.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
+    fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
+        println!("event received! {:?}", event);
     }
 }
 
