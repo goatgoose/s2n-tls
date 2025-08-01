@@ -36,29 +36,6 @@ pub mod ffi {
                 let _ = meta;
                 let _ = event;
             }
-
-            // fn on_event_erased<M: Meta, E: Event>(&self, meta: &M, event: &E) {
-            //     let _ = meta;
-            //     let _ = event;
-            // }
-            //
-            // fn on_connection_event_erased<E: Event>(
-            //     &self,
-            //     context: &dyn Any,
-            //     meta: &api::ConnectionMeta,
-            //     event: &E,
-            // ) {
-            //     let _ = context;
-            //     let _ = meta;
-            //     let _ = event;
-            // }
-            //
-            // fn query_erased(
-            //     context: &dyn Any,
-            //     query: &mut dyn query::Query,
-            // ) -> query::ControlFlow {
-            //     query.execute(context)
-            // }
         }
 
         struct EventSubscriberWrapper<S: Subscriber> {
@@ -96,20 +73,6 @@ pub mod ffi {
                 );
                 publisher.on_application_protocol_information(event);
             }
-
-            // fn on_event_erased<M: Meta, E: Event>(&self, meta: &M, event: &E) {
-            //     self.inner.on_event(meta, event);
-            // }
-            //
-            // fn on_connection_event_erased<E: Event>(&self, context: &dyn Any, meta: &ConnectionMeta, event: &E) {
-            //     let typed_context = context.downcast_ref::<S::ConnectionContext>().unwrap();
-            //     self.inner.on_connection_event(typed_context, meta, event);
-            // }
-            //
-            // fn query_erased(context: &dyn Any, query: &mut dyn Query) -> ControlFlow {
-            //     let typed_context = context.downcast_ref::<S::ConnectionContext>().unwrap();
-            //     query.execute(typed_context)
-            // }
         }
     }
 

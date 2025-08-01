@@ -28,9 +28,7 @@ struct MyConnectionContext {
     counter: AtomicU64,
 }
 
-struct MyEventSubscriber {
-    global_counter: AtomicU64,
-}
+struct MyEventSubscriber;
 
 impl event::Subscriber for MyEventSubscriber {
     type ConnectionContext = MyConnectionContext;
@@ -40,12 +38,10 @@ impl event::Subscriber for MyEventSubscriber {
     }
 
     fn on_application_protocol_information(&self, context: &Self::ConnectionContext, meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
-        println!("alpn event!!! {:?}", event.chosen_application_protocol);
-        context.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.global_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        println!("alpn event! {:?}", event.chosen_application_protocol);
 
-        println!("context counter: {}", context.counter.load(std::sync::atomic::Ordering::Relaxed));
-        println!("global_counter: {}", self.global_counter.load(std::sync::atomic::Ordering::Relaxed));
+        context.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        println!("counter: {}", context.counter.load(std::sync::atomic::Ordering::Relaxed));
     }
 
     fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
@@ -61,7 +57,7 @@ async fn run_server(cert_pem: &[u8], key_pem: &[u8], addr: &str) -> Result<(), B
     builder.load_pem(cert_pem, key_pem)?;
     builder.set_application_protocol_preference(["h2", "http/1.0", "http/1.1"])?;
 
-    let subscriber = MyEventSubscriber { global_counter: AtomicU64::new(0) };
+    let subscriber = MyEventSubscriber {};
     builder.set_event_subscriber(subscriber)?;
 
     let config = builder.build()?;
@@ -89,8 +85,6 @@ async fn run_server(cert_pem: &[u8], key_pem: &[u8], addr: &str) -> Result<(), B
         let server = server.clone();
         tokio::spawn(async move {
             let mut tls = server.accept(stream).await?;
-            println!("{:#?}", tls);
-            println!("alpn: {:?}", tls.as_ref().application_protocol());
 
             // Copy data from the client to stdout
             let mut stdout = tokio::io::stdout();
