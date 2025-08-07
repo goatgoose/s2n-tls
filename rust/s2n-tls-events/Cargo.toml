@@ -9,4 +9,4 @@ tracing = { version = "0.1" }
 
 [lib]
 name = "s2n_tls_events"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["staticlib", "rlib"]
