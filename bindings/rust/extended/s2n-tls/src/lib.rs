@@ -10,6 +10,7 @@ extern crate alloc;
 #[global_allocator]
 static ALLOCATOR: checkers::Allocator = checkers::Allocator::system();
 
+use std::io::{self, Write};
 pub use s2n_tls_events::event;
 
 #[macro_use]
@@ -36,3 +37,11 @@ pub use s2n_tls_sys as ffi;
 
 #[cfg(any(feature = "unstable-testing", test))]
 pub mod testing;
+
+pub fn print_from_rust_in_rust(bytes: *const u8, len: usize) {
+    let bytes = unsafe { std::slice::from_raw_parts(bytes, len) };
+
+    let mut stdout = io::stdout();
+    stdout.write_all(bytes).unwrap();
+    stdout.flush().unwrap();
+}

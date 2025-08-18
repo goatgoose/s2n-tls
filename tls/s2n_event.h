@@ -15,7 +15,7 @@
 
 #pragma once
 
-void rust_function();
+void print_from_rust_in_c(uint8_t* data, size_t len);
 
 void *subscriber_create_connection_context(void *subscriber);
 int subscriber_on_application_protocol_information(void *subscriber, void *context, uint8_t *alpn, uint32_t alpn_len);

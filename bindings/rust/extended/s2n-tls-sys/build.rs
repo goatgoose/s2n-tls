@@ -152,7 +152,7 @@ fn build_vendored() {
 
     println!(
         "cargo:rustc-link-search={}",
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../rust/s2n-tls-events/target/debug")
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../rust/s2n-tls-events/target/release-lto")
     );
     println!("cargo:rustc-link-lib=static=s2n_tls_events");
 

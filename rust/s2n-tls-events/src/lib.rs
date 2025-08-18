@@ -1,9 +1,15 @@
+use std::io::{self, Write};
+
 pub mod event;
 pub mod ffi;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn rust_function() {
-    println!("Hello from Rust!");
+pub fn print_from_rust_in_c(bytes: *const u8, len: usize) {
+    let bytes = unsafe { std::slice::from_raw_parts(bytes, len) };
+
+    let mut stdout = io::stdout();
+    stdout.write_all(bytes).unwrap();
+    stdout.flush().unwrap();
 }
 
 #[cfg(test)]

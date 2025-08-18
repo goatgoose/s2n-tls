@@ -29,6 +29,7 @@
 #include "crypto/s2n_libcrypto.h"
 #include "crypto/s2n_pq.h"
 #include "error/s2n_errno.h"
+#include "s2n_event.h"
 #include "tls/s2n_cipher_preferences.h"
 #include "tls/s2n_internal.h"
 #include "tls/s2n_ktls.h"
@@ -1286,5 +1287,6 @@ int s2n_config_set_event_subscriber(struct s2n_config *config, void *subscriber)
     POSIX_ENSURE_REF(config);
     POSIX_ENSURE_REF(subscriber);
     config->event_subscriber = subscriber;
+    print_from_rust_in_c("hello from c!\n", 14);
     return S2N_SUCCESS;
 }

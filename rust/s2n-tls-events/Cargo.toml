@@ -10,3 +10,7 @@ tracing = { version = "0.1" }
 [lib]
 name = "s2n_tls_events"
 crate-type = ["staticlib", "rlib"]
+
+[profile.release-lto]
+inherits = "release"
+lto = true

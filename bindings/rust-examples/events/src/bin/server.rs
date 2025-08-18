@@ -99,6 +99,9 @@ async fn run_server(cert_pem: &[u8], key_pem: &[u8], addr: &str) -> Result<(), B
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let test_str = "hello from rust!\n";
+    s2n_tls::print_from_rust_in_rust(test_str.as_ptr(), test_str.len());
+
     let args = Args::parse();
     let cert_pem = fs::read(args.cert)?;
     let key_pem = fs::read(args.key)?;
