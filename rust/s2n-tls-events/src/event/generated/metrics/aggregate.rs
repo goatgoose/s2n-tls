@@ -12,7 +12,6 @@ use crate::event::{
         AsVariant, BoolRecorder, Info, Metric, NominalRecorder, Recorder, Registry, Units,
     },
 };
-use core::sync::atomic::{AtomicU64, Ordering};
 static INFO: &[Info; 1usize] = &[info::Builder {
     id: 0usize,
     name: Str::new("application_protocol_information\0"),
@@ -202,7 +201,7 @@ impl<R: Registry> Subscriber<R> {
 impl<R: Registry> event::Subscriber for Subscriber<R> {
     type ConnectionContext = ConnectionContext;
     fn create_connection_context(
-        &self,
+        &mut self,
         meta: &api::ConnectionMeta,
         _info: &api::ConnectionInfo,
     ) -> Self::ConnectionContext {
@@ -212,8 +211,8 @@ impl<R: Registry> event::Subscriber for Subscriber<R> {
     }
     #[inline]
     fn on_application_protocol_information(
-        &self,
-        context: &Self::ConnectionContext,
+        &mut self,
+        context: &mut Self::ConnectionContext,
         meta: &api::ConnectionMeta,
         event: &api::ApplicationProtocolInformation,
     ) {

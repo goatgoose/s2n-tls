@@ -23,25 +23,26 @@ mod tests {
         impl event::Subscriber for TestSubscriber {
             type ConnectionContext = ();
 
-            fn create_connection_context(&self, meta: &ConnectionMeta, info: &ConnectionInfo) -> Self::ConnectionContext {
+            fn create_connection_context(&mut self, _meta: &ConnectionMeta, _info: &ConnectionInfo) -> Self::ConnectionContext {
                 ()
             }
 
-            fn on_application_protocol_information(&self, context: &Self::ConnectionContext, meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
+            fn on_application_protocol_information(&mut self, _context: &mut Self::ConnectionContext, _meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
                 println!("alpn: {:?}", event.chosen_application_protocol);
             }
         }
 
-        let subscriber = TestSubscriber {};
+        let mut subscriber = TestSubscriber {};
+        let mut context = ();
 
-        let publisher = event::ConnectionPublisherSubscriber::<TestSubscriber>::new(
+        let mut publisher = event::ConnectionPublisherSubscriber::<TestSubscriber>::new(
             event::builder::ConnectionMeta {
                 id: 0,
                 timestamp: unsafe { s2n_quic_core::time::Timestamp::from_duration(Duration::from_secs(10)) }.into_event(),
             },
             0,
-            &subscriber,
-            &(),
+            &mut subscriber,
+            &mut context,
         );
 
         publisher.on_application_protocol_information(event::builder::ApplicationProtocolInformation {

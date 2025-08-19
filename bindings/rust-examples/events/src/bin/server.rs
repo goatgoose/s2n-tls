@@ -33,18 +33,18 @@ struct MyEventSubscriber;
 impl event::Subscriber for MyEventSubscriber {
     type ConnectionContext = MyConnectionContext;
 
-    fn create_connection_context(&self, meta: &ConnectionMeta, info: &ConnectionInfo) -> Self::ConnectionContext {
+    fn create_connection_context(&mut self, _meta: &ConnectionMeta, _info: &ConnectionInfo) -> Self::ConnectionContext {
         MyConnectionContext { counter: AtomicU64::new(0) }
     }
 
-    fn on_application_protocol_information(&self, context: &Self::ConnectionContext, meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
+    fn on_application_protocol_information(&mut self, context: &mut MyConnectionContext, _meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
         println!("alpn event! {:?}", event.chosen_application_protocol);
 
         context.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         println!("counter: {}", context.counter.load(std::sync::atomic::Ordering::Relaxed));
     }
 
-    fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
+    fn on_event<M: Meta, E: Event>(&mut self, _meta: &M, event: &E) {
         println!("event received! {:?}", event);
     }
 }

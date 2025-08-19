@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use s2n_quic_events::{parser, validation, Output, OutputMode};
+use s2n_quic_events::{parser, validation, Output, OutputMode, Protocol};
 
 struct EventInfo<'a> {
     input_path: &'a str,
@@ -51,7 +51,7 @@ impl EventInfo<'_> {
             env!("CARGO_MANIFEST_DIR"),
             "/../s2n-tls-events/src/event"
             ),
-            output_mode: OutputMode::Ref,
+            output_mode: OutputMode::Mut(Protocol::Tls),
             s2n_quic_core_path: quote!(s2n_quic_core),
             api: quote! {
                 pub use s2n_quic_core::event::api::{

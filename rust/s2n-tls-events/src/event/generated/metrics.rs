@@ -6,7 +6,6 @@
 // changes should be made there.
 
 use crate::event::{self, api, metrics::Recorder};
-use core::sync::atomic::{AtomicU64, Ordering};
 pub(crate) mod aggregate;
 pub(crate) mod probe;
 #[derive(Debug)]
@@ -26,7 +25,7 @@ where
 }
 pub struct Context<R: Recorder> {
     recorder: R,
-    application_protocol_information: AtomicU64,
+    application_protocol_information: u64,
 }
 impl<R: Recorder> Context<R> {
     pub fn inner(&self) -> &R {
@@ -42,35 +41,32 @@ where
 {
     type ConnectionContext = Context<S::ConnectionContext>;
     fn create_connection_context(
-        &self,
+        &mut self,
         meta: &api::ConnectionMeta,
         info: &api::ConnectionInfo,
     ) -> Self::ConnectionContext {
         Context {
             recorder: self.subscriber.create_connection_context(meta, info),
-            application_protocol_information: AtomicU64::new(0),
+            application_protocol_information: 0,
         }
     }
     #[inline]
     fn on_application_protocol_information(
-        &self,
-        context: &Self::ConnectionContext,
+        &mut self,
+        context: &mut Self::ConnectionContext,
         meta: &api::ConnectionMeta,
         event: &api::ApplicationProtocolInformation,
     ) {
-        context
-            .application_protocol_information
-            .fetch_add(1, Ordering::Relaxed);
+        context.application_protocol_information += 1;
         self.subscriber
-            .on_application_protocol_information(&context.recorder, meta, event);
+            .on_application_protocol_information(&mut context.recorder, meta, event);
     }
 }
 impl<R: Recorder> Drop for Context<R> {
     fn drop(&mut self) {
         self.recorder.increment_counter(
             "application_protocol_information",
-            self.application_protocol_information
-                .load(Ordering::Relaxed) as _,
+            self.application_protocol_information as _,
         );
     }
 }

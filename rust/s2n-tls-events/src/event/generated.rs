@@ -96,7 +96,7 @@ pub mod tracing {
     impl super::Subscriber for Subscriber {
         type ConnectionContext = tracing::Span;
         fn create_connection_context(
-            &self,
+            &mut self,
             meta: &api::ConnectionMeta,
             _info: &api::ConnectionInfo,
         ) -> Self::ConnectionContext {
@@ -105,8 +105,8 @@ pub mod tracing {
         }
         #[inline]
         fn on_application_protocol_information(
-            &self,
-            context: &Self::ConnectionContext,
+            &mut self,
+            context: &mut Self::ConnectionContext,
             _meta: &api::ConnectionMeta,
             event: &api::ApplicationProtocolInformation,
         ) {
@@ -181,7 +181,7 @@ mod traits {
     use core::fmt;
     use s2n_quic_core::query;
     #[doc = r" Allows for events to be subscribed to"]
-    pub trait Subscriber: 'static + Send + Sync {
+    pub trait Subscriber: 'static + Send {
         #[doc = r" An application provided type associated with each connection."]
         #[doc = r""]
         #[doc = r" The context provides a mechanism for applications to provide a custom type"]
@@ -224,18 +224,18 @@ mod traits {
         #[doc = r"     }"]
         #[doc = r" }"]
         #[doc = r"  ```"]
-        type ConnectionContext: 'static + Send + Sync;
+        type ConnectionContext: 'static + Send;
         #[doc = r" Creates a context to be passed to each connection-related event"]
         fn create_connection_context(
-            &self,
+            &mut self,
             meta: &api::ConnectionMeta,
             info: &api::ConnectionInfo,
         ) -> Self::ConnectionContext;
         #[doc = "Called when the `ApplicationProtocolInformation` event is triggered"]
         #[inline]
         fn on_application_protocol_information(
-            &self,
-            context: &Self::ConnectionContext,
+            &mut self,
+            context: &mut Self::ConnectionContext,
             meta: &api::ConnectionMeta,
             event: &api::ApplicationProtocolInformation,
         ) {
@@ -245,15 +245,15 @@ mod traits {
         }
         #[doc = r" Called for each event that relates to the endpoint and all connections"]
         #[inline]
-        fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
+        fn on_event<M: Meta, E: Event>(&mut self, meta: &M, event: &E) {
             let _ = meta;
             let _ = event;
         }
         #[doc = r" Called for each event that relates to a connection"]
         #[inline]
         fn on_connection_event<E: Event>(
-            &self,
-            context: &Self::ConnectionContext,
+            &mut self,
+            context: &mut Self::ConnectionContext,
             meta: &api::ConnectionMeta,
             event: &E,
         ) {
@@ -269,39 +269,13 @@ mod traits {
         ) -> query::ControlFlow {
             query.execute(context)
         }
-    }
-    impl<T: Subscriber> Subscriber for std::sync::Arc<T> {
-        type ConnectionContext = T::ConnectionContext;
+        #[doc = r" Used for querying and mutating the `Subscriber::ConnectionContext` on a Subscriber"]
         #[inline]
-        fn create_connection_context(
-            &self,
-            meta: &api::ConnectionMeta,
-            info: &api::ConnectionInfo,
-        ) -> Self::ConnectionContext {
-            self.as_ref().create_connection_context(meta, info)
-        }
-        #[inline]
-        fn on_application_protocol_information(
-            &self,
-            context: &Self::ConnectionContext,
-            meta: &api::ConnectionMeta,
-            event: &api::ApplicationProtocolInformation,
-        ) {
-            self.as_ref()
-                .on_application_protocol_information(context, meta, event);
-        }
-        #[inline]
-        fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
-            self.as_ref().on_event(meta, event);
-        }
-        #[inline]
-        fn on_connection_event<E: Event>(
-            &self,
-            context: &Self::ConnectionContext,
-            meta: &api::ConnectionMeta,
-            event: &E,
-        ) {
-            self.as_ref().on_connection_event(context, meta, event);
+        fn query_mut(
+            context: &mut Self::ConnectionContext,
+            query: &mut dyn query::QueryMut,
+        ) -> query::ControlFlow {
+            query.execute_mut(context)
         }
     }
     #[doc = r" Subscriber is implemented for a 2-element tuple to make it easy to compose multiple"]
@@ -314,7 +288,7 @@ mod traits {
         type ConnectionContext = (A::ConnectionContext, B::ConnectionContext);
         #[inline]
         fn create_connection_context(
-            &self,
+            &mut self,
             meta: &api::ConnectionMeta,
             info: &api::ConnectionInfo,
         ) -> Self::ConnectionContext {
@@ -325,28 +299,28 @@ mod traits {
         }
         #[inline]
         fn on_application_protocol_information(
-            &self,
-            context: &Self::ConnectionContext,
+            &mut self,
+            context: &mut Self::ConnectionContext,
             meta: &api::ConnectionMeta,
             event: &api::ApplicationProtocolInformation,
         ) {
-            (self.0).on_application_protocol_information(&context.0, meta, event);
-            (self.1).on_application_protocol_information(&context.1, meta, event);
+            (self.0).on_application_protocol_information(&mut context.0, meta, event);
+            (self.1).on_application_protocol_information(&mut context.1, meta, event);
         }
         #[inline]
-        fn on_event<M: Meta, E: Event>(&self, meta: &M, event: &E) {
+        fn on_event<M: Meta, E: Event>(&mut self, meta: &M, event: &E) {
             self.0.on_event(meta, event);
             self.1.on_event(meta, event);
         }
         #[inline]
         fn on_connection_event<E: Event>(
-            &self,
-            context: &Self::ConnectionContext,
+            &mut self,
+            context: &mut Self::ConnectionContext,
             meta: &api::ConnectionMeta,
             event: &E,
         ) {
-            self.0.on_connection_event(&context.0, meta, event);
-            self.1.on_connection_event(&context.1, meta, event);
+            self.0.on_connection_event(&mut context.0, meta, event);
+            self.1.on_connection_event(&mut context.1, meta, event);
         }
         #[inline]
         fn query(
@@ -358,6 +332,16 @@ mod traits {
                 .and_then(|| A::query(&context.0, query))
                 .and_then(|| B::query(&context.1, query))
         }
+        #[inline]
+        fn query_mut(
+            context: &mut Self::ConnectionContext,
+            query: &mut dyn query::QueryMut,
+        ) -> query::ControlFlow {
+            query
+                .execute_mut(context)
+                .and_then(|| A::query_mut(&mut context.0, query))
+                .and_then(|| B::query_mut(&mut context.1, query))
+        }
     }
     pub trait EndpointPublisher {
         #[doc = r" Returns the QUIC version, if any"]
@@ -366,7 +350,7 @@ mod traits {
     pub struct EndpointPublisherSubscriber<'a, Sub: Subscriber> {
         meta: api::EndpointMeta,
         quic_version: Option<u32>,
-        subscriber: &'a Sub,
+        subscriber: &'a mut Sub,
     }
     impl<'a, Sub: Subscriber> fmt::Debug for EndpointPublisherSubscriber<'a, Sub> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -381,7 +365,7 @@ mod traits {
         pub fn new(
             meta: builder::EndpointMeta,
             quic_version: Option<u32>,
-            subscriber: &'a Sub,
+            subscriber: &'a mut Sub,
         ) -> Self {
             Self {
                 meta: meta.into_event(),
@@ -399,7 +383,7 @@ mod traits {
     pub trait ConnectionPublisher {
         #[doc = "Publishes a `ApplicationProtocolInformation` event to the publisher's subscriber"]
         fn on_application_protocol_information(
-            &self,
+            &mut self,
             event: builder::ApplicationProtocolInformation,
         );
         #[doc = r" Returns the QUIC version negotiated for the current connection, if any"]
@@ -410,8 +394,8 @@ mod traits {
     pub struct ConnectionPublisherSubscriber<'a, Sub: Subscriber> {
         meta: api::ConnectionMeta,
         quic_version: u32,
-        subscriber: &'a Sub,
-        context: &'a Sub::ConnectionContext,
+        subscriber: &'a mut Sub,
+        context: &'a mut Sub::ConnectionContext,
     }
     impl<'a, Sub: Subscriber> fmt::Debug for ConnectionPublisherSubscriber<'a, Sub> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -426,8 +410,8 @@ mod traits {
         pub fn new(
             meta: builder::ConnectionMeta,
             quic_version: u32,
-            subscriber: &'a Sub,
-            context: &'a Sub::ConnectionContext,
+            subscriber: &'a mut Sub,
+            context: &'a mut Sub::ConnectionContext,
         ) -> Self {
             Self {
                 meta: meta.into_event(),
@@ -440,7 +424,7 @@ mod traits {
     impl<'a, Sub: Subscriber> ConnectionPublisher for ConnectionPublisherSubscriber<'a, Sub> {
         #[inline]
         fn on_application_protocol_information(
-            &self,
+            &mut self,
             event: builder::ApplicationProtocolInformation,
         ) {
             let event = event.into_event();
@@ -464,13 +448,11 @@ mod traits {
 pub mod testing {
     use super::*;
     use crate::event::snapshot::Location;
-    use core::sync::atomic::{AtomicU64, Ordering};
-    use std::sync::Mutex;
     pub mod endpoint {
         use super::*;
         pub struct Subscriber {
             location: Option<Location>,
-            output: Mutex<Vec<String>>,
+            output: Vec<String>,
         }
         impl Drop for Subscriber {
             fn drop(&mut self) {
@@ -478,7 +460,7 @@ pub mod testing {
                     return;
                 }
                 if let Some(location) = self.location.as_ref() {
-                    location.snapshot_log(&self.output.lock().unwrap());
+                    location.snapshot_log(&self.output);
                 }
             }
         }
@@ -508,7 +490,7 @@ pub mod testing {
         impl super::super::Subscriber for Subscriber {
             type ConnectionContext = ();
             fn create_connection_context(
-                &self,
+                &mut self,
                 _meta: &api::ConnectionMeta,
                 _info: &api::ConnectionInfo,
             ) -> Self::ConnectionContext {
@@ -518,8 +500,8 @@ pub mod testing {
     #[derive(Debug)]
     pub struct Subscriber {
         location: Option<Location>,
-        output: Mutex<Vec<String>>,
-        pub application_protocol_information: AtomicU64,
+        output: Vec<String>,
+        pub application_protocol_information: u64,
     }
     impl Drop for Subscriber {
         fn drop(&mut self) {
@@ -527,7 +509,7 @@ pub mod testing {
                 return;
             }
             if let Some(location) = self.location.as_ref() {
-                location.snapshot_log(&self.output.lock().unwrap());
+                location.snapshot_log(&self.output);
             }
         }
     }
@@ -551,39 +533,38 @@ pub mod testing {
             Self {
                 location: None,
                 output: Default::default(),
-                application_protocol_information: AtomicU64::new(0),
+                application_protocol_information: 0,
             }
         }
     }
     impl super::Subscriber for Subscriber {
         type ConnectionContext = ();
         fn create_connection_context(
-            &self,
+            &mut self,
             _meta: &api::ConnectionMeta,
             _info: &api::ConnectionInfo,
         ) -> Self::ConnectionContext {
         }
         fn on_application_protocol_information(
-            &self,
-            _context: &Self::ConnectionContext,
+            &mut self,
+            _context: &mut Self::ConnectionContext,
             meta: &api::ConnectionMeta,
             event: &api::ApplicationProtocolInformation,
         ) {
-            self.application_protocol_information
-                .fetch_add(1, Ordering::Relaxed);
+            self.application_protocol_information += 1;
             if self.location.is_some() {
                 let meta = crate::event::snapshot::Fmt::to_snapshot(meta);
                 let event = crate::event::snapshot::Fmt::to_snapshot(event);
                 let out = format!("{meta:?} {event:?}");
-                self.output.lock().unwrap().push(out);
+                self.output.push(out);
             }
         }
     }
     #[derive(Debug)]
     pub struct Publisher {
         location: Option<Location>,
-        output: Mutex<Vec<String>>,
-        pub application_protocol_information: AtomicU64,
+        output: Vec<String>,
+        pub application_protocol_information: u64,
     }
     impl Publisher {
         #[doc = r" Creates a publisher with snapshot assertions enabled"]
@@ -605,7 +586,7 @@ pub mod testing {
             Self {
                 location: None,
                 output: Default::default(),
-                application_protocol_information: AtomicU64::new(0),
+                application_protocol_information: 0,
             }
         }
     }
@@ -616,16 +597,15 @@ pub mod testing {
     }
     impl super::ConnectionPublisher for Publisher {
         fn on_application_protocol_information(
-            &self,
+            &mut self,
             event: builder::ApplicationProtocolInformation,
         ) {
-            self.application_protocol_information
-                .fetch_add(1, Ordering::Relaxed);
+            self.application_protocol_information += 1;
             let event = event.into_event();
             if self.location.is_some() {
                 let event = crate::event::snapshot::Fmt::to_snapshot(&event);
                 let out = format!("{event:?}");
-                self.output.lock().unwrap().push(out);
+                self.output.push(out);
             }
         }
         fn quic_version(&self) -> u32 {
@@ -641,7 +621,7 @@ pub mod testing {
                 return;
             }
             if let Some(location) = self.location.as_ref() {
-                location.snapshot_log(&self.output.lock().unwrap());
+                location.snapshot_log(&self.output);
             }
         }
     }

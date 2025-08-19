@@ -60,9 +60,9 @@ extern "C" fn on_application_protocol_information<S: Subscriber>(
     event: *mut s2n_event_application_protocol_information,
 ) {
     unsafe {
-        let subscriber = &*((*s2n_connection_publisher).subscriber as *mut S);
+        let subscriber = &mut *((*s2n_connection_publisher).subscriber as *mut S);
         let meta = &*((*s2n_connection_publisher).meta as *mut api::ConnectionMeta);
-        let context = &*((*s2n_connection_publisher).context as *mut S::ConnectionContext);
+        let context = &mut *((*s2n_connection_publisher).context as *mut S::ConnectionContext);
 
         let event = (&*event).into_event();
         subscriber.on_application_protocol_information(context, meta, &event);
@@ -83,7 +83,7 @@ extern "C" fn connection_publisher_new<S: Subscriber>(
     };
     let info = api::ConnectionInfo {};
 
-    let subscriber = unsafe { &*((*c_subscriber).subscriber as *mut S) };
+    let subscriber = unsafe { &mut *((*c_subscriber).subscriber as *mut S) };
 
     let context = subscriber.create_connection_context(&meta, &info);
     let boxed_context = Box::new(context);
