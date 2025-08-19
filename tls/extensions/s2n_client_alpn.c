@@ -88,10 +88,12 @@ static int s2n_client_alpn_recv(struct s2n_connection *conn, struct s2n_stuffer 
 
     POSIX_GUARD_RESULT(s2n_select_server_preference_protocol(conn, &server_protocols, &client_protocols));
 
-    if (conn->config->event_subscriber) {
-        POSIX_ENSURE_REF(conn->event_context);
-        subscriber_on_application_protocol_information(conn->config->event_subscriber, conn->event_context,
-            (uint8_t *) conn->application_protocol, strlen(conn->application_protocol));
+    if (conn->publisher) {
+        struct s2n_event_application_protocol_information event = {
+            .alpn = (uint8_t *) conn->application_protocol,
+            .alpn_len = strlen(conn->application_protocol),
+        };
+        s2n_connection_publisher_on_application_protocol_information(conn->publisher, &event);
     }
 
     return S2N_SUCCESS;

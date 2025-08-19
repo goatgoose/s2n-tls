@@ -1007,7 +1007,7 @@ impl Builder {
         S: event::Subscriber + 'static + Send + Sync,
     {
         unsafe {
-            s2n_config_set_event_subscriber(self.as_mut_ptr(), s2n_tls_events::ffi::c_bridge::subscriber_to_ptr(subscriber)).into_result()?;
+            s2n_config_set_event_subscriber(self.as_mut_ptr(), s2n_tls_events::ffi::subscriber_to_ptr(subscriber) as *mut s2n_subscriber).into_result()?;
         }
         Ok(())
     }

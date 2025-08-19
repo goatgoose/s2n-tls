@@ -378,8 +378,8 @@ int s2n_connection_set_config(struct s2n_connection *conn, struct s2n_config *co
     }
 
     if (config->event_subscriber) {
-        conn->event_context = subscriber_create_connection_context(config->event_subscriber);
-        POSIX_ENSURE_REF(conn->event_context);
+        conn->publisher = s2n_subscriber_connection_publisher_new(config->event_subscriber);
+        POSIX_ENSURE_REF(conn->publisher);
     }
 
     conn->config = config;

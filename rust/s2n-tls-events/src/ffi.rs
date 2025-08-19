@@ -1,131 +1,123 @@
 // TODO: autogenerate from s2n-quic-events. will live in generated.rs.
 
-use std::any::Any;
-use s2n_quic_core::event::Event;
-use s2n_quic_core::query::{ControlFlow, Query};
-use crate::event::{api, Meta};
+use std::ffi::c_void;
+use std::time::SystemTime;
+use s2n_quic_core::event::IntoEvent;
+use crate::event::{api, builder, Subscriber};
 
-pub mod c_bridge {
-    use std::any::Any;
-    use std::ffi::c_void;
-    use crate::event;
-    use crate::event::{api, ConnectionPublisher, ConnectionPublisherSubscriber, Subscriber};
-    use crate::event::api::{ApplicationProtocolInformation, ConnectionInfo, ConnectionMeta};
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct s2n_event_application_protocol_information {
+    pub alpn: *mut u8,
+    pub alpn_len: u32,
+}
 
-    pub trait ErasedEventSubscriber: 'static + Send + Sync {
-        fn create_connection_context_erased(
-            &self,
-            meta: &ConnectionMeta,
-            info: &ConnectionInfo,
-        ) -> Box<dyn Any + Send + Sync + 'static>;
-
-        fn on_application_protocol_information_erased(
-            &self,
-            context: &dyn Any,
-            meta: event::builder::ConnectionMeta,
-            event: event::builder::ApplicationProtocolInformation,
-        ) {
-            let _ = context;
-            let _ = meta;
-            let _ = event;
-        }
-    }
-
-    struct EventSubscriberWrapper<S: Subscriber> {
-        pub inner: S,
-    }
-
-    pub fn subscriber_to_ptr<S: Subscriber>(subscriber: S) -> *mut c_void {
-        // Wrap the subscriber
-        let wrapper = EventSubscriberWrapper { inner: subscriber };
-
-        // Box it as a trait object
-        let boxed: Box<dyn ErasedEventSubscriber> = Box::new(wrapper);
-
-        // Box the box to get a thin pointer we can store as c_void
-        let boxed_box = Box::new(boxed);
-        let raw = Box::into_raw(boxed_box) as *mut c_void;
-        raw
-    }
-
-    impl<S> ErasedEventSubscriber for EventSubscriberWrapper<S>
-    where
-        S: Subscriber,
-    {
-        fn create_connection_context_erased(&self, meta: &ConnectionMeta, info: &ConnectionInfo) -> Box<dyn Any + Send + Sync + 'static> {
-            Box::new(self.inner.create_connection_context(meta, info))
-        }
-
-        fn on_application_protocol_information_erased(&self, context: &dyn Any, meta: event::builder::ConnectionMeta, event: event::builder::ApplicationProtocolInformation) {
-            let typed_context = context.downcast_ref::<S::ConnectionContext>().unwrap();
-            let publisher = ConnectionPublisherSubscriber::new(
-                meta,
-                1,
-                &self.inner,
-                &typed_context,
-            );
-            publisher.on_application_protocol_information(event);
+impl<'a> IntoEvent<api::ApplicationProtocolInformation<'a>> for &s2n_event_application_protocol_information {
+    fn into_event(self) -> api::ApplicationProtocolInformation<'a> {
+        unsafe {
+            api::ApplicationProtocolInformation {
+                chosen_application_protocol: std::slice::from_raw_parts(self.alpn, self.alpn_len.try_into().unwrap())
+            }
         }
     }
 }
 
-pub mod c_api {
-    use std::any::Any;
-    use std::ffi::{c_int, c_void};
-    use std::time::SystemTime;
-    use s2n_quic_core::event::{IntoEvent, Timestamp};
-    use crate::event::api;
-    use super::c_bridge;
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct s2n_subscriber {
+    pub subscriber: *mut c_void,
+    pub connection_publisher_new: extern "C" fn(
+        subscriber: *mut s2n_subscriber
+    ) -> *mut s2n_connection_publisher,
+}
 
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn subscriber_create_connection_context(
-        subscriber: *mut c_void
-    ) -> *mut c_void {
-        unsafe {
-            let subscriber_box = &*(subscriber as *const Box<dyn c_bridge::ErasedEventSubscriber>);
-            let subscriber = &**subscriber_box;
+pub fn subscriber_to_ptr<S: Subscriber>(subscriber: S) -> *mut s2n_subscriber {
+    let boxed_subscriber = Box::new(subscriber);
+    let subscriber_ptr = Box::into_raw(boxed_subscriber) as *mut c_void;
 
-            // TODO: create in C and pass in to function
-            let meta = api::ConnectionMeta {
-                id: 0,
-                timestamp: s2n_quic_core::time::Timestamp::from_duration(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()).into_event(),
-            };
-            let info = api::ConnectionInfo {};
+    let c_subscriber = s2n_subscriber {
+        subscriber: subscriber_ptr,
+        connection_publisher_new: connection_publisher_new::<S>,
+    };
+    let boxed_c_subscriber = Box::new(c_subscriber);
+    Box::into_raw(boxed_c_subscriber)
+}
 
-            let context_box = subscriber.create_connection_context_erased(&meta, &info);
-            let context_box_box = Box::new(context_box);
-            let context_ptr = Box::into_raw(context_box_box) as *mut c_void;
-            context_ptr
-        }
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct s2n_connection_publisher {
+    pub subscriber: *mut c_void,
+    pub meta: *mut c_void,
+    pub context: *mut c_void,
+    pub on_application_protocol_information: extern "C" fn(
+        s2n_connection_publisher: *mut s2n_connection_publisher,
+        event: *mut s2n_event_application_protocol_information
+    ),
+}
+
+extern "C" fn on_application_protocol_information<S: Subscriber>(
+    s2n_connection_publisher: *mut s2n_connection_publisher,
+    event: *mut s2n_event_application_protocol_information,
+) {
+    unsafe {
+        let subscriber = &*((*s2n_connection_publisher).subscriber as *mut S);
+        let meta = &*((*s2n_connection_publisher).meta as *mut api::ConnectionMeta);
+        let context = &*((*s2n_connection_publisher).context as *mut S::ConnectionContext);
+
+        let event = (&*event).into_event();
+        subscriber.on_application_protocol_information(context, meta, &event);
+        subscriber.on_connection_event(context, meta, &event);
+        subscriber.on_event(meta, &event);
     }
+}
 
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn subscriber_on_application_protocol_information(
-        subscriber: *mut c_void,
-        context: *mut c_void,
-        alpn: *mut u8,
-        alpn_len: u32,
-    ) -> c_int {
-        unsafe {
-            let subscriber_box = &*(subscriber as *const Box<dyn c_bridge::ErasedEventSubscriber>);
-            let subscriber = &**subscriber_box;
-
-            let context_box = &*(context as *const Box<dyn Any + Send + Sync>);
-            let context = &**context_box;
-
-            // TODO: create in C and pass in to function
-            let meta = crate::event::builder::ConnectionMeta {
-                id: 0,
-                timestamp: s2n_quic_core::time::Timestamp::from_duration(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()).into_event(),
-            };
-
-            let event = crate::event::builder::ApplicationProtocolInformation {
-                chosen_application_protocol: std::slice::from_raw_parts(alpn, alpn_len.try_into().unwrap()),
-            };
-
-            subscriber.on_application_protocol_information_erased(context, meta, event);
+extern "C" fn connection_publisher_new<S: Subscriber>(
+    c_subscriber: *mut s2n_subscriber,
+) -> *mut s2n_connection_publisher {
+    // TODO: create in C and pass in to function
+    let meta =  unsafe {
+        api::ConnectionMeta {
+            id: 0,
+            timestamp: s2n_quic_core::time::Timestamp::from_duration(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()).into_event(),
         }
+    };
+    let info = api::ConnectionInfo {};
 
-        0
-    }
+    let subscriber = unsafe { &*((*c_subscriber).subscriber as *mut S) };
+
+    let context = subscriber.create_connection_context(&meta, &info);
+    let boxed_context = Box::new(context);
+    let context_ptr = Box::into_raw(boxed_context) as *mut c_void;
+
+    let meta_box = Box::new(meta);
+    let meta_ptr = Box::into_raw(meta_box) as *mut c_void;
+
+    let boxed_subscriber = Box::new(subscriber);
+    let subscriber_ptr = Box::into_raw(boxed_subscriber) as *mut c_void;
+
+    let publisher = s2n_connection_publisher {
+        subscriber: subscriber_ptr,
+        meta: meta_ptr,
+        context: context_ptr,
+        on_application_protocol_information: on_application_protocol_information::<S>,
+    };
+    let boxed_publisher = Box::new(publisher);
+    Box::into_raw(boxed_publisher)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn s2n_subscriber_connection_publisher_new(
+    subscriber: *mut s2n_subscriber
+) -> *mut s2n_connection_publisher {
+    let subscriber_ref = &*subscriber;
+    (subscriber_ref.connection_publisher_new)(subscriber)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn s2n_connection_publisher_on_application_protocol_information(
+    publisher: *mut s2n_connection_publisher,
+    event: *mut s2n_event_application_protocol_information,
+) {
+    let publisher_ref = &*publisher;
+    (publisher_ref.on_application_protocol_information)(publisher, event)
 }

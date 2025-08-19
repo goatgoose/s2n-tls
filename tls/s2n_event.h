@@ -17,5 +17,24 @@
 
 void rust_function();
 
-void *subscriber_create_connection_context(void *subscriber);
-int subscriber_on_application_protocol_information(void *subscriber, void *context, uint8_t *alpn, uint32_t alpn_len);
+struct s2n_subscriber {
+    void *subscriber;
+    void (*connection_publisher_new)(struct s2n_subscriber *subscriber);
+};
+
+struct s2n_event_application_protocol_information {
+    uint8_t *alpn;
+    uint32_t alpn_len;
+};
+
+struct s2n_connection_publisher {
+    void *subscriber;
+    void *meta;
+    void* context;
+    void (*on_application_protocol_information)(struct s2n_connection_publisher *publisher,
+        struct s2n_event_application_protocol_information *event);
+};
+
+struct s2n_connection_publisher *s2n_subscriber_connection_publisher_new(struct s2n_subscriber *subscriber);
+void s2n_connection_publisher_on_application_protocol_information(struct s2n_connection_publisher *publisher,
+    struct s2n_event_application_protocol_information *event);
