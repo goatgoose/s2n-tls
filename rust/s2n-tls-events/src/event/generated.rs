@@ -83,7 +83,8 @@ pub mod tracing {
     }
     impl Default for Subscriber {
         fn default() -> Self {
-            let root = tracing :: span ! (target : "s2n_quic_dc" , tracing :: Level :: DEBUG , "s2n_quic_dc");
+            let root =
+                tracing :: span ! (target : "s2n_tls" , tracing :: Level :: DEBUG , "s2n_tls");
             Self { root }
         }
     }
