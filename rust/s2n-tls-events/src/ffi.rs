@@ -1,9 +1,37 @@
 // TODO: autogenerate from s2n-quic-events. will live in generated.rs.
 
 use std::ffi::c_void;
-use std::time::SystemTime;
+use std::num::NonZeroU64;
+use std::time::{Duration, SystemTime};
 use s2n_quic_core::event::IntoEvent;
 use crate::event::{api, builder, Subscriber};
+
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct s2n_event_connection_meta {
+    pub id: u64,
+    pub timestamp_nanoseconds: u64,
+}
+
+impl IntoEvent<api::ConnectionMeta> for &s2n_event_connection_meta {
+    fn into_event(self) -> api::ConnectionMeta {
+        let duration = Duration::from_nanos(self.timestamp_nanoseconds);
+        let timestamp = unsafe {
+            s2n_quic_core::time::Timestamp::from_duration(duration).into_event()
+        };
+        api::ConnectionMeta { id: self.id, timestamp }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct s2n_event_connection_info {}
+
+impl IntoEvent<api::ConnectionInfo> for &s2n_event_connection_info {
+    fn into_event(self) -> api::ConnectionInfo {
+        api::ConnectionInfo {}
+    }
+}
 
 #[allow(non_camel_case_types)]
 #[repr(C)]
@@ -27,7 +55,9 @@ impl<'a> IntoEvent<api::ApplicationProtocolInformation<'a>> for &s2n_event_appli
 pub struct s2n_subscriber {
     pub subscriber: *mut c_void,
     pub connection_publisher_new: extern "C" fn(
-        subscriber: *mut s2n_subscriber
+        subscriber: *mut s2n_subscriber,
+        meta: *const s2n_event_connection_meta,
+        info: *const s2n_event_connection_info
     ) -> *mut s2n_connection_publisher,
 }
 
@@ -73,16 +103,11 @@ extern "C" fn on_application_protocol_information<S: Subscriber>(
 
 extern "C" fn connection_publisher_new<S: Subscriber>(
     c_subscriber: *mut s2n_subscriber,
+    meta: *const s2n_event_connection_meta,
+    info: *const s2n_event_connection_info,
 ) -> *mut s2n_connection_publisher {
-    // TODO: create in C and pass in to function
-    let meta =  unsafe {
-        api::ConnectionMeta {
-            id: 0,
-            timestamp: s2n_quic_core::time::Timestamp::from_duration(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()).into_event(),
-        }
-    };
-    let info = api::ConnectionInfo {};
-
+    let meta = unsafe { (&*meta).into_event() };
+    let info = unsafe { &*info }.into_event();
     let subscriber = unsafe { &mut *((*c_subscriber).subscriber as *mut S) };
 
     let context = subscriber.create_connection_context(&meta, &info);
@@ -107,10 +132,12 @@ extern "C" fn connection_publisher_new<S: Subscriber>(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn s2n_subscriber_connection_publisher_new(
-    subscriber: *mut s2n_subscriber
+    subscriber: *mut s2n_subscriber,
+    meta: *const s2n_event_connection_meta,
+    info: *const s2n_event_connection_info
 ) -> *mut s2n_connection_publisher {
     let subscriber_ref = &*subscriber;
-    (subscriber_ref.connection_publisher_new)(subscriber)
+    (subscriber_ref.connection_publisher_new)(subscriber, meta, info)
 }
 
 #[unsafe(no_mangle)]

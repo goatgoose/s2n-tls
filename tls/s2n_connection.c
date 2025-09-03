@@ -378,7 +378,14 @@ int s2n_connection_set_config(struct s2n_connection *conn, struct s2n_config *co
     }
 
     if (config->event_subscriber) {
-        conn->publisher = s2n_subscriber_connection_publisher_new(config->event_subscriber);
+        uint64_t now = 0;
+        POSIX_GUARD_RESULT(s2n_config_wall_clock(config, &now));
+        struct s2n_event_connection_meta meta = {
+            .id = 0,
+            .timestamp_nanoseconds = now,
+        };
+        struct s2n_event_connection_info info = {};
+        conn->publisher = s2n_subscriber_connection_publisher_new(config->event_subscriber, &meta, &info);
         POSIX_ENSURE_REF(conn->publisher);
     }
 

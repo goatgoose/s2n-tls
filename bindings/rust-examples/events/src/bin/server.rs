@@ -37,8 +37,8 @@ impl event::Subscriber for MyEventSubscriber {
         MyConnectionContext { counter: AtomicU64::new(0) }
     }
 
-    fn on_application_protocol_information(&mut self, context: &mut MyConnectionContext, _meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
-        println!("alpn event! {:?}", event.chosen_application_protocol);
+    fn on_application_protocol_information(&mut self, context: &mut MyConnectionContext, meta: &ConnectionMeta, event: &ApplicationProtocolInformation) {
+        println!("[{}] alpn event! {:?}", meta.timestamp, event.chosen_application_protocol);
 
         context.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         println!("counter: {}", context.counter.load(std::sync::atomic::Ordering::Relaxed));
