@@ -51,10 +51,9 @@ impl<'a> IntoEvent<api::ApplicationProtocolInformation<'a>> for &s2n_event_appli
 }
 
 #[allow(non_camel_case_types)]
-#[repr(C)]
 pub struct s2n_subscriber {
-    pub subscriber: *mut c_void,
-    pub connection_publisher_new: extern "C" fn(
+    subscriber: *mut c_void,
+    connection_publisher_new: fn(
         subscriber: *mut s2n_subscriber,
         meta: *const s2n_event_connection_meta,
         info: *const s2n_event_connection_info
@@ -74,18 +73,17 @@ pub fn subscriber_to_ptr<S: Subscriber>(subscriber: S) -> *mut s2n_subscriber {
 }
 
 #[allow(non_camel_case_types)]
-#[repr(C)]
 pub struct s2n_connection_publisher {
-    pub subscriber: *mut c_void,
-    pub meta: *mut c_void,
-    pub context: *mut c_void,
-    pub on_application_protocol_information: extern "C" fn(
+    subscriber: *mut c_void,
+    meta: *mut c_void,
+    context: *mut c_void,
+    on_application_protocol_information: fn(
         s2n_connection_publisher: *mut s2n_connection_publisher,
         event: *mut s2n_event_application_protocol_information
     ),
 }
 
-extern "C" fn on_application_protocol_information<S: Subscriber>(
+fn on_application_protocol_information<S: Subscriber>(
     s2n_connection_publisher: *mut s2n_connection_publisher,
     event: *mut s2n_event_application_protocol_information,
 ) {
@@ -101,7 +99,7 @@ extern "C" fn on_application_protocol_information<S: Subscriber>(
     }
 }
 
-extern "C" fn connection_publisher_new<S: Subscriber>(
+fn connection_publisher_new<S: Subscriber>(
     c_subscriber: *mut s2n_subscriber,
     meta: *const s2n_event_connection_meta,
     info: *const s2n_event_connection_info,

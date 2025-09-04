@@ -24,23 +24,14 @@ struct s2n_event_connection_meta {
 
 struct s2n_event_connection_info {};
 
-struct s2n_subscriber {
-    void *subscriber;
-    void (*connection_publisher_new)(struct s2n_subscriber *subscriber);
-};
+struct s2n_subscriber;
 
 struct s2n_event_application_protocol_information {
     uint8_t *alpn;
     uint32_t alpn_len;
 };
 
-struct s2n_connection_publisher {
-    void *subscriber;
-    void *meta;
-    void* context;
-    void (*on_application_protocol_information)(struct s2n_connection_publisher *publisher,
-        struct s2n_event_application_protocol_information *event);
-};
+struct s2n_connection_publisher;
 
 struct s2n_connection_publisher *s2n_subscriber_connection_publisher_new(struct s2n_subscriber *subscriber,
     struct s2n_event_connection_meta *meta, struct s2n_event_connection_info *info);
