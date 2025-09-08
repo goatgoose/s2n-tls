@@ -40,11 +40,12 @@ pub struct s2n_event_application_protocol_information {
     pub alpn_len: u32,
 }
 
-impl<'a> IntoEvent<api::ApplicationProtocolInformation<'a>> for &s2n_event_application_protocol_information {
+impl<'a> IntoEvent<api::ApplicationProtocolInformation<'a>> for *const s2n_event_application_protocol_information {
     fn into_event(self) -> api::ApplicationProtocolInformation<'a> {
         unsafe {
+            let event = &*self;
             api::ApplicationProtocolInformation {
-                chosen_application_protocol: std::slice::from_raw_parts(self.alpn, self.alpn_len.try_into().unwrap())
+                chosen_application_protocol: std::slice::from_raw_parts(event.alpn, event.alpn_len.try_into().unwrap())
             }
         }
     }
@@ -79,20 +80,20 @@ pub struct s2n_connection_publisher {
     context: *mut c_void,
     on_application_protocol_information: fn(
         s2n_connection_publisher: *mut s2n_connection_publisher,
-        event: *mut s2n_event_application_protocol_information
+        event: *const s2n_event_application_protocol_information
     ),
 }
 
 fn on_application_protocol_information<S: Subscriber>(
     s2n_connection_publisher: *mut s2n_connection_publisher,
-    event: *mut s2n_event_application_protocol_information,
+    event: *const s2n_event_application_protocol_information,
 ) {
     unsafe {
         let subscriber = &mut *((*s2n_connection_publisher).subscriber as *mut S);
         let meta = &*((*s2n_connection_publisher).meta as *mut api::ConnectionMeta);
         let context = &mut *((*s2n_connection_publisher).context as *mut S::ConnectionContext);
 
-        let event = (&*event).into_event();
+        let event = event.into_event();
         subscriber.on_application_protocol_information(context, meta, &event);
         subscriber.on_connection_event(context, meta, &event);
         subscriber.on_event(meta, &event);
@@ -141,7 +142,7 @@ pub unsafe extern "C" fn s2n_subscriber_connection_publisher_new(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn s2n_connection_publisher_on_application_protocol_information(
     publisher: *mut s2n_connection_publisher,
-    event: *mut s2n_event_application_protocol_information,
+    event: *const s2n_event_application_protocol_information,
 ) {
     let publisher_ref = &*publisher;
     (publisher_ref.on_application_protocol_information)(publisher, event)
