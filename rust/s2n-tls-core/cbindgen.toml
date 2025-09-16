@@ -1,0 +1,4 @@
+language = "c"
+
+# Define structs without a typdef.
+style = "tag"
