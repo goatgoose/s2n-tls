@@ -376,6 +376,21 @@ int s2n_connection_set_config(struct s2n_connection *conn, struct s2n_config *co
         conn->request_ocsp_status = true;
     }
 
+    if (config->event_subscriber) {
+        struct s2n_event_connection_meta meta = {
+            .id = 0,
+            .timestamp = 1142,
+        };
+        struct s2n_event_connection_info info = {};
+        conn->event_publisher = s2n_event_connection_publisher_new(config->event_subscriber, &meta, &info);
+
+        struct s2n_event_byte_array event = {
+            .data = (uint8_t *) "hello world!",
+            .data_len = sizeof("hello world!") - 1,
+        };
+        POSIX_GUARD(s2n_event_connection_publisher_on_byte_array_event(conn->event_publisher, &event));
+    }
+
     conn->config = config;
     return S2N_SUCCESS;
 }

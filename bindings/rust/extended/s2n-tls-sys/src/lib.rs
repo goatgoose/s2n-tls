@@ -11,6 +11,8 @@ mod features;
 #[allow(unused_imports)]
 pub use features::*;
 
+extern crate s2n_tls_core;
+
 // Additional defines that don't get imported with bindgen
 
 pub mod s2n_status_code {

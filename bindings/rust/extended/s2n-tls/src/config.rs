@@ -962,6 +962,16 @@ impl Builder {
         Ok(self)
     }
 
+    pub fn set_event_subscriber<S: crate::events::Subscriber>(
+        &mut self, subscriber: S
+    ) -> Result<&mut Self, Error> {
+        let c_subscriber = s2n_tls_core::event::c_ffi::s2n_event_subscriber::new(subscriber);
+        unsafe {
+            s2n_config_set_event_subscriber(self.as_mut_ptr(), c_subscriber as *mut c_void).into_result()
+        }?;
+        Ok(self)
+    }
+
     pub fn build(mut self) -> Result<Config, Error> {
         if self.load_system_certs {
             unsafe {

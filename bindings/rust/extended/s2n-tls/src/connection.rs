@@ -1600,7 +1600,9 @@ impl Drop for Connection {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
     use super::*;
+    use crate::events;
     use crate::testing::{build_config, SniTestCerts, TestPair};
 
     // ensure the connection context is send
@@ -1750,6 +1752,53 @@ mod tests {
         };
 
         assert_eq!(server_name, test_server_name);
+        Ok(())
+    }
+
+    #[test]
+    fn test_subscriber() -> Result<(), Error> {
+        #[derive(Clone)]
+        struct ByteArraySubscriber {
+            received_data: Arc<Mutex<Option<Vec<u8>>>>,
+        }
+
+        impl events::Subscriber for ByteArraySubscriber {
+            type ConnectionContext = Arc<Mutex<Option<Vec<u8>>>>;
+
+            fn create_connection_context(
+                &mut self,
+                _meta: &events::ConnectionMeta,
+                _info: &events::ConnectionInfo,
+            ) -> Self::ConnectionContext {
+                self.received_data.clone()
+            }
+
+            fn on_byte_array_event(
+                &mut self,
+                context: &mut Self::ConnectionContext,
+                _meta: &events::ConnectionMeta,
+                event: &events::ByteArrayEvent,
+            ) {
+                *context.lock().unwrap() = Some(event.data.to_vec());
+            }
+        }
+
+        let subscriber = ByteArraySubscriber {
+            received_data: Arc::new(Mutex::new(None)),
+        };
+
+        let config = {
+            let mut builder = Config::builder();
+            builder.set_event_subscriber(subscriber.clone())?;
+            builder.build()?
+        };
+        let mut conn = Connection::new_server();
+        conn.set_config(config)?;
+
+        let data = subscriber.received_data.lock().unwrap().take().unwrap();
+        let data = String::from_utf8(data).unwrap();
+        assert_eq!(data, "hello world!");
+
         Ok(())
     }
 }

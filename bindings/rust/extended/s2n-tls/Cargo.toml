@@ -25,6 +25,7 @@ errno = { version = "0.3" }
 # A minimum libc version of 0.2.121 is required by aws-lc-sys 0.14.0.
 libc = "0.2.121"
 s2n-tls-sys = { version = "=0.3.25", path = "../s2n-tls-sys", features = ["internal"] }
+s2n-tls-core = { path = "../../../../rust/s2n-tls-core" }
 pin-project-lite = "0.2"
 hex = "0.4"
 

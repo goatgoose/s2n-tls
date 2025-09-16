@@ -30,6 +30,7 @@
 #include "tls/s2n_tls_parameters.h"
 #include "tls/s2n_x509_validator.h"
 #include "utils/s2n_blob.h"
+#include "tls/s2n_tls_core.h"
 
 #define S2N_MAX_TICKET_KEYS 48
 
@@ -237,6 +238,8 @@ struct s2n_config {
 
     /* List of certificate authorities supported */
     struct s2n_blob cert_authorities;
+
+    struct s2n_event_subscriber *event_subscriber;
 };
 
 S2N_CLEANUP_RESULT s2n_config_ptr_free(struct s2n_config **config);

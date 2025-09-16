@@ -32,5 +32,11 @@ pub mod security;
 
 pub use s2n_tls_sys as ffi;
 
+pub use s2n_tls_core::event::{
+    api as events,
+    api::{ConnectionInfo, ConnectionMeta},
+    Event, Meta, Subscriber, Timestamp,
+};
+
 #[cfg(any(feature = "unstable-testing", test))]
 pub mod testing;

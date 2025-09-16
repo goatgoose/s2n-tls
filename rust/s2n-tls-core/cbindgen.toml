@@ -1,4 +1,5 @@
 language = "c"
+pragma_once = true
 
 # Define structs without a typdef.
 style = "tag"
