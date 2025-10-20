@@ -25,11 +25,6 @@ if [[ ${DISTRO} != "amazon linux" ]]; then
 else
     # AL2023 case
     BUILD_FLAGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-    # AL2 case; Linker flags are a workaround for system openssl
-    if [[ ${VERSION_ID} == '2' ]]; then
-       BUILD_FLAGS=$(echo -e '-DCMAKE_EXE_LINKER_FLAGS="-lcrypto -lz" \
-         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
-    fi
 fi
 
 # Use prlimit to set the memlock limit to unlimited for linux. OSX is unlimited by default

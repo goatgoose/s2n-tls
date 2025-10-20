@@ -58,8 +58,7 @@ sudo yum install openssl-devel
 # build s2n-tls
 cmake3 . -Bbuild \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=./s2n-tls-install \
-    -DCMAKE_EXE_LINKER_FLAGS="-lcrypto -lz"
+    -DCMAKE_INSTALL_PREFIX=./s2n-tls-install
 cmake3 --build build -j $(nproc)
 cd build
 CTEST_PARALLEL_LEVEL=$(nproc) ctest3
